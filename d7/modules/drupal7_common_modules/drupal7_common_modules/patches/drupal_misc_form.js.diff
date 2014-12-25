@@ -1,0 +1,49 @@
+--- a/misc/form.js	2013-07-25 10:06:02.125765790 +0800
++++ b/misc/form.js	2013-07-25 10:04:36.001338712 +0800
+@@ -75,4 +75,46 @@
+   }
+ };
+ 
++/**
++ * Finds all checkboxes and adds a (Select all) field.
++ */
++$(document).ready(function() {
++	var elements = $('.form-type-checkboxes');
++	elements.each(function(index, elem) {
++		var checkboxesContainer = $('.form-checkboxes', elem);
++		var checkboxes = $('input', checkboxesContainer);
++
++		//Don't bother if we have only 2 elements or less.
++		if (checkboxes.length <= 2) {
++			return;
++		}
++
++		//Build our select all checkbox.
++		var selectAllContainer = $('<div class="form-item form-type-checkbox">\n\
++\n\
++    <input id="select-all-' + index + '" class="form-checkbox" type="checkbox" />\n\
++    <label class="option" for="select-all-' + index + '">(select all)</label>\n\
++\n\
++</div>');
++		var selectAll = $('input', selectAllContainer);
++		
++		//Determine the state of the Select All checkbox.
++		function checkSelectAll() {
++			selectAll.prop('checked',
++				checkboxes.filter(':checked').length === checkboxes.length
++			);
++		}
++		checkSelectAll();
++
++		//Register the handlers so maintain state.
++		checkboxes.change(checkSelectAll);
++		selectAll.change(function() {
++			checkboxes.prop('checked', this.checked);
++		});
++
++		//Append to the container
++		selectAllContainer.prependTo(checkboxesContainer);
++	});
++});
++
+ })(jQuery);

@@ -1,0 +1,64 @@
+--- a/misc/autocomplete.js	2013-07-17 19:37:50.346032246 +0800
++++ b/misc/autocomplete.js	2013-08-07 18:48:28.596944547 +0800
+@@ -114,6 +114,7 @@
+  */
+ Drupal.jsAC.prototype.select = function (node) {
+   this.input.value = $(node).data('autocompleteValue');
++  $(this.input).trigger('autocompleteSelect', [node]);
+ };
+ 
+ /**
+@@ -167,7 +168,7 @@
+ Drupal.jsAC.prototype.hidePopup = function (keycode) {
+   // Select item if the right key or mousebutton was pressed.
+   if (this.selected && ((keycode && keycode != 46 && keycode != 8 && keycode != 27) || !keycode)) {
+-    this.input.value = $(this.selected).data('autocompleteValue');
++    this.select(this.selected);
+   }
+   // Hide popup.
+   var popup = this.popup;
+@@ -220,7 +221,7 @@
+   for (key in matches) {
+     $('<li></li>')
+       .html($('<div></div>').html(matches[key]))
+-      .mousedown(function () { ac.select(this); })
++      .mousedown(function () { ac.hidePopup(this); })
+       .mouseover(function () { ac.highlight(this); })
+       .mouseout(function () { ac.unhighlight(this); })
+       .data('autocompleteValue', key)
+@@ -261,6 +262,7 @@
+   this.uri = uri;
+   this.delay = 300;
+   this.cache = {};
++  this.request = null;
+ };
+ 
+ /**
+@@ -288,10 +290,13 @@
+   }
+   this.timer = setTimeout(function () {
+     db.owner.setStatus('begin');
++    if (db.request) {
++        db.request.abort();
++    }
+ 
+     // Ajax GET request for autocompletion. We use Drupal.encodePath instead of
+     // encodeURIComponent to allow autocomplete search terms to contain slashes.
+-    $.ajax({
++    db.request = $.ajax({
+       type: 'GET',
+       url: db.uri + '/' + Drupal.encodePath(searchString),
+       dataType: 'json',
+@@ -305,8 +310,10 @@
+           db.owner.setStatus('found');
+         }
+       },
+-      error: function (xmlhttp) {
+-        alert(Drupal.ajaxError(xmlhttp, db.uri));
++      error: function (xmlhttp, textStatus) {
++        if (textStatus !== 'abort') {
++          alert(Drupal.ajaxError(xmlhttp, db.uri));	
++        }
+       }
+     });
+   }, this.delay);

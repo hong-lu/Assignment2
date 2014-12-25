@@ -1,0 +1,207 @@
+<?php
+/* 
+ * The MIT License
+ *
+ * Copyright 2007-2013 Computing for Volunteer Welfare Organizations (CVWO),
+ * National University of Singapore.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+namespace CVWO\Base {
+
+	use \CVWO\Base\Database as db;
+
+	function organisation_install() {
+		organisation_install_codem();
+	}
+
+	function organisation_uninstall() {
+	}
+
+	function organisation_install_codem() {
+		cvwocodem2_registerquestion(MODULE_NAME, ORGANISATION_TYPE_QUESTION, array(
+			t('Case Management Service'),
+			t('CDC'),
+			t('Church'),
+			t('Corporate'),
+			t('FSC'),
+			t('Hospital'),
+			t('Individual'),
+			t('Lions Club'),
+			t('Organisation'),
+			t('SAGE'),
+			t('School'),
+			t('Other')
+		));
+
+		cvwocodem2_registerquestion(MODULE_NAME, ORGANISATION_INDUSTRY_QUESTION, array());
+		cvwocodem2_registerquestion(MODULE_NAME, ORGANISATION_PERSON_DESIGNATION_QUESTION, array());
+	}
+
+	function organisation_schema(&$schema) {
+		$schema[ORGANISATION_TABLE] = array(
+			'description' => t('Stores information about an organisation'),
+			'fields' => array(
+				'organisation_id' => array(
+					'type' => 'serial',
+					'not null' => true,
+					'unsigned' => true,
+					'description' => t('The primary key.'),
+				),
+				'name' => array(
+					'type' => 'varchar',
+					'length' => 255,
+					'not null' => true,
+					'description' => t('Name of the organisation.'),
+				),
+				'member_count' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'description' => t('Number of members in the organisation.'),
+				),
+				'type' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('CodeM option for organisation\'s type.')
+				),
+				'industry' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'description' => t('CodeM option for organisation\'s industry.')
+				),
+				'registration_no' => array(
+					'type' => 'varchar',
+					'length' => 64,
+					'description' => t('Registration no. of the organisation.'),
+				),
+				'description' => array(
+					'type' => 'text',
+					'description' => t('Description of the organisation.'),
+				),
+			),
+			'primary key' => array('organisation_id'),
+			'indexes' => array(
+				'type' => array('type'),
+			),
+		);
+		db\table_include_soft_delete($schema[ORGANISATION_TABLE]);
+		db\table_include_timestamps($schema[ORGANISATION_TABLE]);
+
+		$schema[ORGANISATION_CONTACT_PERSON_TABLE] = array(
+			'description' => t('Associates the organisations to contact persons.'),
+			'fields' => array(
+				'organisation_person_id' => array(
+					'type' => 'serial',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('The primary key.')
+				),
+				'organisation_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('This corresponds to the ORGANISATION_TABLE\'s organisation_id.'),
+				),
+				'person_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('This corresponds to the PERSON_TABLE\'s person_id.')
+				),
+				'primary_contact' => array(
+					'type'			 => 'int',
+					'size'			 => 'tiny',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'default'		 => 0,
+					'description'	 => t('Non-zero for the primary contact person.')
+				),
+				'designation' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'description' => t('CodeM option for the designation of the person.')
+				),
+				'remarks' => array(
+					'type' => 'text',
+					'description' => t('The remarks for each contact person'),
+				),
+			),
+			'primary key' => array('organisation_person_id'),
+			'indexes' => array(
+				'organisation_id' => array('organisation_id'),
+				'person_id' => array('person_id'),
+			),
+			'foreign keys' => array(
+				'organisation_relation' => array(
+					'table' => ORGANISATION_TABLE,
+					'organisation_id' => 'organisation_id',
+				),
+				'person_relation' => array(
+					'table' => PERSON_TABLE,
+					'person_id' => 'person_id',
+				),
+			),
+		);
+		db\table_include_soft_delete($schema[ORGANISATION_CONTACT_PERSON_TABLE]);
+		db\table_include_timestamps($schema[ORGANISATION_CONTACT_PERSON_TABLE]);
+
+		$schema[ORGANISATION_ADDRESS_TABLE] = array(
+			'description' => t('Store the addresses of the organisation.'),
+			'fields' => array(
+				'organisation_address_id' => array(
+					'type' => 'serial',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('The primary key.'),
+				),
+				'organisation_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('This corresponds to the ORGANISATION_TABLE\'s organisation_id'),
+				),
+				'address_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('This corresponds to the CVWO_ADDRESS_TABLE\'s address_id')
+				),
+			),
+			'primary key' => array('organisation_address_id'),
+			'indexes' => array(
+				'organisation_id' => array('organisation_id'),
+				'address_id' => array('address_id'),
+			),
+			'foreign keys' => array(
+				'organisation_relation' => array(
+					'table' => ORGANISATION_TABLE,
+					'organisation_id' => 'organisation_id',
+				),
+				'address_relation' => array(
+					'table' => CVWO_ADDRESS_TABLE,
+					'address_id' => 'address_id'
+				),
+			),
+		);
+		db\table_include_soft_delete($schema[ORGANISATION_ADDRESS_TABLE]);
+		db\table_include_timestamps($schema[ORGANISATION_ADDRESS_TABLE]);
+	}
+}

@@ -1,0 +1,218 @@
+<?php
+/*
+  Copyright (c) 2011-2012 Computing for Volunteer Welfare Organisations (CVWO)
+  National University of Singapore
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
+  files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
+  modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
+  Software is furnished to do so, subject to the following conditions:
+   
+  1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+  Software.
+   
+  2. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+// $Id$
+
+/**
+ * @file
+ * Functional Tests for the cvwobase_d7 module.
+ */
+
+class AuditLogTestCase extends DrupalWebTestCase {
+  protected $privileged_user;
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Audit Trail test',
+      'description' => 'Test audit trail tracking, listing and deleting.',
+      'group' => 'cvwobase',
+    );
+  }
+	
+	function setUp() {
+		parent::setUp('cvwobase_d7');  // Enable any modules required for the test
+    // Create and log in our privileged user.
+    $this->privileged_user = $this->drupalCreateUser(array(
+      CVWOBASE_D7_ACCESS_AUDIT_PERM,
+      CVWOBASE_D7_ADMIN_AUDIT_PERM,
+      ));
+    $this->drupalLogin($this->privileged_user);
+	}
+	
+	function testAuditLogEntries() {
+		define('TAG1', $this->randomName());
+		define('TAG2', $this->randomName());
+		define('OTHERMOD', 'user');
+    define('OTHERMODMSG', 'Message from a different module');
+    define('NUMRECORDS', 1000);
+    define('MAXLOGLEN', 50);
+    define('PAGERTEST_PARTITIONS', 6);
+    
+    $all_records = range(1, NUMRECORDS);
+    
+    define('TAGSTEP', 2); // entries 1, 3, etc use TAG1, TAG2 otherwise
+    define('USERSTEP', 3); // entries 1, 4, etc use user 2, user 1 otherwise
+    define('MODULESTEP', 5); // entries 1, 6, etc use CVWOBASE_MODULE, OTHERMOD otherwise
+    
+    $key_func = create_function('$num', 'return "delete_records[$num]";');
+
+    $del_tests[] = array(mt_rand(1, NUMRECORDS)); // test deleting 1 record
+    $del_tests[] = call_user_func_array('array_diff', array_merge(array(range(1, NUMRECORDS, mt_rand(2, floor(sqrt(NUMRECORDS))))), $del_tests)); // test deleting multiple records
+    $del_tests[] = call_user_func_array('array_diff', array_merge(array($all_records), $del_tests)); // test deleting all records
+    
+    for ($i = 0; $i < count($del_tests); ++$i)
+      $del_posts[] = array_fill_keys(array_map($key_func, $del_tests[$i]), TRUE);
+    
+    variable_set(PAGELIMIT_CVWOAUDIT, NUMRECORDS);
+		
+		$another_user = $this->drupalCreateUser();
+    
+    $msg_args = array(
+      '%tag1' => TAG1,
+      '%mod' => CVWOBASE_MODULE,
+      '%user2' => $another_user->name
+    );
+		
+    for ($i = 0; $i < NUMRECORDS; ++$i)
+      cvwobase_add_audit($this->randomString(mt_rand(1, MAXLOGLEN)), ($i % TAGSTEP) ? TAG2 : TAG1, ($i % MODULESTEP) ? OTHERMOD : CVWOBASE_MODULE, NULL, ($i % USERSTEP) ? 0 : $another_user->uid);
+    
+		$this->drupalGet('audit');
+    $this->auditTestCheckboxHelper($all_records, NUMRECORDS);
+    
+    $this->notice(t('Attempting to filter Audit Logs by user %user2. Resulting table should only have records 1, 4, 7, 10, etc.', $msg_args));
+    $this->drupalPost(NULL, array('username' => $another_user->name), t(CVWOBASE_AUDIT_BTN_VIEW));
+    $this->assertFieldByName('username', $another_user->name, t('Username field should show the username %user2.', $msg_args));
+    $this->auditTestCheckboxHelper(range(1, NUMRECORDS, USERSTEP), NUMRECORDS);
+		
+    $this->notice(t('Attempting to filter Audit Logs by tag %tag1. Resulting table should only have records 1, 3, 5, 7, etc.', $msg_args));
+		$this->drupalPost(NULL, array('tags['.TAG1.']' => TRUE, 'username' => ''), t(CVWOBASE_AUDIT_BTN_VIEW));
+    $this->assertFieldByName('username', '', t('Username field should be blank.'));
+    drupal_static_reset('drupal_html_id');
+    $this->assertFieldChecked(drupal_html_id('edit-tags['.TAG1.']'), t('Tag filter %tag1 should be checked.', $msg_args));
+    $this->auditTestCheckboxHelper(range(1, NUMRECORDS, TAGSTEP), NUMRECORDS);
+    
+    $this->notice(t('Attempting to filter Audit Logs by module %mod. Resulting table should only have records 1, 6, 11, 16, etc.', $msg_args));
+		$this->drupalPost(NULL, array('tags['.TAG1.']' => FALSE, 'module_name' => CVWOBASE_MODULE), t(CVWOBASE_AUDIT_BTN_VIEW));
+    drupal_static_reset('drupal_html_id');
+    $this->assertOptionSelected(drupal_html_id('edit-module_name'), CVWOBASE_MODULE, t('Module filter %mod should be selected.', $msg_args));
+    $this->assertNoFieldChecked(drupal_html_id('edit-tags['.TAG1.']'), t('Tag filter %tag1 should not be checked.', $msg_args));
+    $this->auditTestCheckboxHelper(range(1, NUMRECORDS, MODULESTEP), NUMRECORDS);
+    
+    $this->notice(t('Attempting to filter Audit Logs by tag %tag1 and module %mod. Resulting table should only have records 1, 11, 21, 31, etc.', $msg_args));
+    $this->drupalPost(NULL, array('tags['.TAG1.']' => TRUE, 'module_name' => CVWOBASE_MODULE), t(CVWOBASE_AUDIT_BTN_VIEW));
+    drupal_static_reset('drupal_html_id');
+    $this->assertOptionSelected(drupal_html_id('edit-module_name'), CVWOBASE_MODULE, t('Module filter %mod filter should be selected.', $msg_args));
+    $this->assertFieldChecked(drupal_html_id('edit-tags['.TAG1.']'), t('Tag filter %tag1 filter should be checked.', $msg_args));
+    $this->auditTestCheckboxHelper(range(1, NUMRECORDS, TAGSTEP * MODULESTEP), NUMRECORDS);
+		
+		$fifth_filter_expected = range(1, NUMRECORDS, TAGSTEP * USERSTEP);
+    $this->notice(t('Attempting to filter Audit Logs by both user %user2 and tag %tag1. Resulting table should only have records 1, 7, 13, 19, etc.', $msg_args));
+		// Even though Tag 1 was already checked, re-check it to prevent cascading of test case failures
+		$this->drupalPost(NULL, array('tags['.TAG1.']' => TRUE, 'module_name' => '', 'username' => $another_user->name), t(CVWOBASE_AUDIT_BTN_VIEW));
+    $this->assertFieldByName('username', $another_user->name, t('Username field should show the username %user2.', $msg_args));
+    drupal_static_reset('drupal_html_id');
+    $this->assertOptionSelected(drupal_html_id('edit-module_name'), '', t('No Module filter should be selected.'));
+    $this->assertFieldChecked(drupal_html_id('edit-tags['.TAG1.']'), t('Tag filter %tag1 filter should be checked.', $msg_args));
+    $this->auditTestCheckboxHelper($fifth_filter_expected, NUMRECORDS);
+    
+    $this->notice(t('Attempting to test pagination by setting page size to be one-sixth the number of records in the Fifth filter.', $msg_args));
+    $page_size = ceil(count($fifth_filter_expected) / PAGERTEST_PARTITIONS);
+    $pager_chunks = array_chunk($fifth_filter_expected, $page_size);
+    $num_pages = count($pager_chunks);
+    variable_set(PAGELIMIT_CVWOAUDIT, $page_size);
+		// Even though values already sent, re-send to prevent cascading of test case failures
+		$this->drupalPost(NULL, array('tags['.TAG1.']' => TRUE, 'module_name' => '', 'username' => $another_user->name), t(CVWOBASE_AUDIT_BTN_VIEW));
+    $pass = TRUE;
+    $next_page = '';
+    for ($i = 0; $i < $num_pages; ++$i) {
+      if ($i > 0) {
+        $links = $this->xpath('//a[text()=:label]', array(':label' => $i));
+        $pass &= (count($links) == 1);
+      }
+      $pass &= $this->auditTestCheckboxHelper($pager_chunks[$i], NUMRECORDS);
+      if ($i < $num_pages - 1) {
+        $links = $this->xpath('//a[text()=:label]', array(':label' => $i + 2));
+        if ($pass &= (count($links) == 1))
+          $next_page = $links[0]->attributes()->href;
+      } else
+        $next_page = '';
+      
+      $this->assert((bool) $pass, t('Page @p has expected records and links shown', array('@p' => $i + 1)));
+      $pass = TRUE;
+      if (!empty($next_page)) {
+        $query_args = array();
+        // TODO: url function expects GET arguments to be in a separate array for clean urls. Figure out a nicer way of doing this.
+        if (($qn_pos = strpos($next_page, '?')) !== FALSE) {
+          $query_parts = explode('&', substr($next_page, $qn_pos + 1));
+          foreach($query_parts as $query_part)
+            if (($eq_pos = strpos($query_part, '=')) !== FALSE)
+              $query_args[substr($query_part, 0, $eq_pos)] = substr($query_part, $eq_pos + 1);
+          $next_page = substr($next_page, 0, $qn_pos);
+        }
+        // TODO: links automatically add /<drupal_url_root>/, but url doesn't expect this. Figure out a nicer way of doing this.
+        $this->drupalGet(strstr($next_page, 'audit'), array('query' => $query_args));
+      }
+    }
+    
+    // Reset Pagination and Filters to ease delete testing
+    $this->notice(t('Clearing all filters.'));
+    variable_set(PAGELIMIT_CVWOAUDIT, NUMRECORDS);
+		// Even though module name already blank, re-send to prevent cascading of test case failures
+		$this->drupalPost(NULL, array('tags['.TAG1.']' => FALSE, 'module_name' => '', 'username' => ''), t(CVWOBASE_AUDIT_BTN_VIEW));
+    $this->assertNoFieldByName('username', $another_user->name, t('Username field should be blank.'));
+    drupal_static_reset('drupal_html_id');
+    $this->assertOptionSelected(drupal_html_id('edit-module_name'), '', t('No Module filter should be selected.'));
+    $this->assertNoFieldChecked(drupal_html_id('edit-tags['.TAG1.']'), t('Tag filter %tag1 filter should not be checked.', $msg_args));
+    $this->auditTestCheckboxHelper($all_records, NUMRECORDS);
+    
+    $expected = $all_records;
+    for ($i = 0; $i < count($del_tests); ++$i) {
+      $deleting = $del_tests[$i];
+      $expected = array_diff($expected, $deleting);
+      $del_msg_args = array('@recs' => implode(', ', $deleting));
+      $this->notice(t('Attempting to delete Record(s) @recs. Resulting confirmation should have Delete and Cancel buttons.', $del_msg_args));
+      $this->drupalPost(NULL, $del_posts[$i], t(CVWOBASE_AUDIT_BTN_DELETE));
+      $this->assert((bool) ($this->assertText(format_plural(count($deleting), 'Are you sure you wish to delete 1 record?', 'Are you sure you wish to delete @count records?')) &
+                            $this->assertFieldById('edit-submit', t('Confirm'), t('Delete button found')) &
+                            $this->assertLink(t('Cancel'), 0, t('Cancel link found'))),
+                    t('Confirmation page has Delete and Cancel buttons.'));
+      // confirm delete
+      $this->notice(t('Confirming deletion of Record(s) @recs. New page should not have these records.', $del_msg_args));
+      $this->drupalPost(NULL, array(), t('Confirm'));
+      $this->assert((bool) ($this->assertText(t('The selected entries have been removed.')) &
+                            $this->auditTestCheckboxHelper($expected, NUMRECORDS)),
+                    t('Successfully deleted Record(s) @recs.', $del_msg_args));
+    }
+    
+    if (count($expected) == 0)
+      $this->assertText(t('There are no records to be displayed'));
+	}
+  
+  protected function auditTestCheckboxHelper(array $check_present, $last_record) {
+    $res = TRUE;
+    for ($i = 1; $i <= $last_record; ++$i)
+      $res &= (count($this->xpath('//input[@type="checkbox"][@name="delete_records[:i]"]', array(':i' => $i))) == (in_array($i, $check_present) ? 1 : 0));
+    $res = (bool) $res;
+    switch (count($check_present)) {
+      case 0:
+        $msg = 'No records out of records 1 to @end found.';
+        break;
+      case 1:
+        $msg = 'Only record @recs out of records 1 to @end found.';
+        break;
+      default:
+        $msg = 'Only records @recs out of records 1 to @end found.';
+    }
+    $this->assert($res, t($msg, array('@recs' => implode(', ', $check_present), '@end' => $last_record)));
+    return $res;
+  }
+  
+  protected function notice($message) {
+    $this->error($message, 'User notice');
+  }
+}

@@ -1,0 +1,11 @@
+--- a/modules/file/file.module	2013-06-23 17:21:51.103395839 +0800
++++ b/modules/file/file.module	2013-06-23 17:22:06.999474578 +0800
+@@ -641,7 +641,7 @@
+ 
+   if (!$file = file_save_upload($upload_name, $element['#upload_validators'], $destination)) {
+     watchdog('file', 'The file upload failed. %upload', array('%upload' => $upload_name));
+-    form_set_error($upload_name, t('The file in the !name field was unable to be uploaded.', array('!name' => $element['#title'])));
++    form_set_error($upload_name, t('The file in the !name field was unable to be uploaded.', array('!name' => isset($element['#title']) ? $element['#title'] : $element['#name'])));
+     return FALSE;
+   }
+ 

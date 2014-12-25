@@ -1,0 +1,162 @@
+<?php
+/*
+ * The MIT License
+ *
+ * Copyright 2013 Computing for Volunteer Welfare Organizations (CVWO),
+ * National University of Singapore.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+namespace CVWO\Community {
+	use \CVWO\Base\Database as db;
+	
+	function aas_install_codem()
+	{
+		cvwocodem2_registerquestion(MODULE_NAME,
+			AAS_ITEM_QUESTION,
+			array(
+				t('Watch'),
+				t('Pendant'),
+				t('Pullcord')
+			));
+	}
+
+	function aas_build_schema(&$schema)
+	{
+		$schema[AAS_PERSON_TABLE] = array(
+			'description'	 => t('Links AAS items to people'),
+			'fields'		 => array(
+				'person_aas_id'	 => array(
+					'type'			 => 'serial',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The primary key.')
+				),
+				'person_id'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('This corresponds to the Community Person\'s person_id')
+				),
+				'aas_item'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The AAS item the person was issued with')
+				)
+			),
+			'primary key'	 => array('person_aas_id'),
+			'indexes'		 => array(
+				'person_id_index' => array(
+					'person_id'
+				)
+			),
+			'foreign keys'	 => array(
+				'person_relation' => array(
+					'table'		 => PERSON_TABLE,
+					'person_id'	 => 'person_id'
+				)
+			)
+		);
+
+		$schema[AAS_REPORTS_TABLE] = array(
+			'description'	 => t('Stores AAS Reports'),
+			'fields'		 => array(
+				'aas_report_id'			 => array(
+					'type'			 => 'serial',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The primary key.')
+				),
+				'person_id'				 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('This corresponds to the Community Person\'s person_id')
+				),
+				'address_id'			 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('This corresponds to the CVWO Address Table\'s address_id')
+				),
+				'device'				 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The AAS device which was triggered')
+				),
+				'activation_timestamp'	 => array(
+					'type'			 => 'datetime',
+					'mysql_type'	 => 'datetime',
+					'not null'		 => true,
+					'description'	 => t('The time the AAS was triggered')
+				),
+				'emergency'				 => array(
+					'type'			 => 'int',
+					'size'			 => 'tiny',
+					'unsigned'		 => true,
+					'description'	 => t('Non-zero if this was an emergency')
+				),
+				'after_office_hours'	 => array(
+					'type'			 => 'int',
+					'size'			 => 'tiny',
+					'unsigned'		 => true,
+					'description'	 => t('Non-zero if this was after office hours')
+				),
+				'worker_id'				 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The person who attended to the AAS activation. This is the person_id in cvwo_community_worker')
+				),
+				'details'				 => array(
+					'type'			 => 'text',
+					'description'	 => t('Activation description text')
+				),
+				'follow_up'				 => array(
+					'type'			 => 'text',
+					'description'	 => t('Activation follow up')
+				)
+			),
+			'primary key'	 => array('aas_report_id'),
+			'indexes'		 => array(
+				'person_id_index' => array(
+					'person_id'
+				)
+			),
+			'foreign keys'	 => array(
+				'person_relation'	 => array(
+					'table'		 => PERSON_TABLE,
+					'person_id'	 => 'person_id'
+				),
+				'address_relation'	 => array(
+					'table'		 => CVWO_ADDRESS_TABLE,
+					'address_id' => 'address_id'
+				),
+				'attendant_relation' => array(
+					'table'		 => WORKER_TABLE,
+					'worker_id'	 => 'person_id'
+				)
+			)
+		);
+		db\table_include_soft_delete($schema[AAS_REPORTS_TABLE]);
+		db\table_include_timestamps($schema[AAS_REPORTS_TABLE]);
+	}
+}

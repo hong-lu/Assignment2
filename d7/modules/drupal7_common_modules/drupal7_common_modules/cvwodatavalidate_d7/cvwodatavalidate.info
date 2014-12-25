@@ -1,0 +1,42 @@
+; $Id$ 
+;2013.5.20
+;National University of Singapore
+
+name = CVWO Data Validate
+description = "Date Validate Module"
+core = 7.x
+package = CVWO Core
+dependencies[] = cvwobase_d7
+dependencies[] = cvwocodem2
+
+files[] = cvwodatavalidate_constants.php
+files[] = cvwodatavalidate.module
+files[] = cvwodatavalidate.inc
+files[] = cvwodatavalidate_api.inc
+
+
+
+;Data validate is a simple but flexiable and efficient framework for checking the whether the data is missing or illegal or not
+;There are Four places to be modified:
+;1.Group by
+;2.Feilds to display
+;3.How to check condition for data validate or illegal
+;4.Table to be joined
+;
+;These are the palces where you can find the documentation:
+;1.'cvwodatavalidate.inc'  inside the first query
+;2.'cvwodatavalidate.inc'  inside the form api (after the second query)
+;3.'cvwodatavalidate.inc'  inside the second query
+;4.'cvwodatavalidate.inc'  inside the second query
+;
+;OR you can just search for ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>cvwo_validate" within this folder
+;
+;To SUM up, most stuff is inside this file and it includes two queries and one form API. First query is for grouping only. Second query is for actual examine. Form API is the main form for this module.
+;Something important to notice:
+;1. when user click one group, the first query should still show groups' result.
+;2. each check case, you may want to check whether some part of the data is missing. so the check case should be consistant with the default value shown in the database.
+;3. you may notice that for every option got from lions_base, I would add one option 'data_validate_nothing' to it. This is because the drupal7 is different from drupal6 where it always complains if you leave the options empty(because the data was originally missing); and it would not allow you to submit. Solution is to check this and add this fancy tag. don't forget to check this again and resign the missing data to blank again when submit.
+;
+;IF you got any problem, pls contact Yu Zhan
+;Find me at COM1 level 1
+;blacktheon@gmail.com

@@ -1,0 +1,11 @@
+--- a/includes/database/mysql/database.inc	2013-06-05 15:00:21.048734252 +0800
++++ b/includes/database/mysql/database.inc	2013-06-05 15:00:41.764836972 +0800
+@@ -72,7 +72,7 @@
+       'init_commands' => array(),
+     );
+     $connection_options['init_commands'] += array(
+-      'sql_mode' => "SET sql_mode = 'ANSI,STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER'",
++      'sql_mode' => "SET sql_mode = 'ANSI,STRICT_TRANS_TABLES,STRICT_ALL_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER'",
+     );
+     // Set connection options.
+     $this->exec(implode('; ', $connection_options['init_commands']));

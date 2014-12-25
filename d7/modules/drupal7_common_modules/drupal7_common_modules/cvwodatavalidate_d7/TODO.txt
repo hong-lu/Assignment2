@@ -1,0 +1,15 @@
+TODO TASK
+*********
+
+TASK:
+ENTRY BY/ON: Name/Date
+ASSIGNED TO: Name
+
+
+
+COMPLETED TASK
+**************
+TASK:
+ENTRY BY/ON: Name/Date
+ASSIGNED TO: Name
+COMPLETED BY/ON: Name/Date

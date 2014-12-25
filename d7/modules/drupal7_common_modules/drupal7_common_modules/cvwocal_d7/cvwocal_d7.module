@@ -1,0 +1,117 @@
+<?php
+/*
+  Copyright (c) 2011-2012 Computing for Volunteer Welfare Organisations (CVWO)
+  National University of Singapore
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
+  files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
+  modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
+  Software is furnished to do so, subject to the following conditions:
+   
+  1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+  Software.
+   
+  2. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+// $Id$
+
+/**
+ * @file
+ * Main module file for cvwocal_d7. Defines menu routers.
+ */
+
+require_once drupal_get_path('module', CVWOCAL_MODULE).'/cvwocal_d7_constants.php';
+
+/**
+ * Implements hook_menu().
+ */
+function cvwocal_d7_menu() {
+  $items[CVWOCAL_MODULE] = array(
+    'title' => 'Calendar',
+    'page callback' => 'drupal_get_form',
+	'page arguments' => array('cvwocal_render'),
+    'access callback' => 'user_is_logged_in',
+    'file' => 'cvwocal_d7_render.inc'
+  );
+  $items[CVWOCAL_MODULE.'/events'] = array(
+    'page callback' => 'cvwocal_events',
+    'access callback' => 'user_is_logged_in',
+    'delivery callback' => 'drupal_json_output',
+    'type' => MENU_CALLBACK,
+    'file' => 'cvwocal_d7_render.inc'
+  );
+  $items[CVWOCAL_MODULE.'/ajaxedit'] = array(
+    'page callback' => 'cvwocal_ajaxedit',
+    'access callback' => 'user_is_logged_in',
+    'delivery callback' => 'drupal_json_output',
+    'type' => MENU_CALLBACK,
+    'file' => 'cvwocal_d7_render.inc'
+  );
+  $items[CVWOCAL_MODULE.'/edit'] = array(
+	'page callback' => 	'drupal_get_form',
+	'page arguments' => array('cvwocal_edit'),
+    'access callback' => 'cvwocal_get_types',
+    'access arguments' => array(TRUE),
+    'type' => MENU_CALLBACK,
+    'file' => 'cvwocal_d7_render.inc'
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function cvwocal_d7_theme() {
+  return array(
+    'cvwocal_filter' => array(
+      'render element' => 'form',
+      'file' => 'cvwocal_d7_render.inc'
+    )
+  );
+}
+
+/**
+ * Implements hook_flush_caches().
+ */
+function cvwocal_d7_flush_caches() {
+  require_once drupal_get_path('module', CVWOCAL_MODULE).'/cvwocal_d7_render.inc';
+  cvwocal_get_types(FALSE, TRUE);
+}
+
+function cvwocal_get_types($filter = FALSE, $reset = FALSE) {
+  $types = &drupal_static(__FUNCTION__, array());
+  $filtered = &drupal_static(__FUNCTION__.':filtered', array());
+  if ($reset) {
+    db_truncate(CVWOCAL_TYPES_TABLE)->execute();
+    $types = array();
+  }
+  if (empty($types)) {
+    $filtered = array();
+    if (!$reset)
+      $types = db_select(CVWOCAL_TYPES_TABLE, 't')->fields('t')->execute()->fetchAllAssoc('name', PDO::FETCH_ASSOC);
+    if (empty($types)) {
+      foreach (module_implements('cal_types') as $module)
+        if (function_exists($f = $module.'_cal_types') && is_array($result = $f()))
+          $types += $result;
+      if (!empty($types))
+        foreach ($types as $name => &$type) {
+          $type['name'] = $name;
+          $type += array(
+            'access_callback' => 'user_access',
+            'access_arguments' => array()
+          );
+          drupal_write_record(CVWOCAL_TYPES_TABLE, $type);
+        }
+    } else
+      foreach ($types as $name => &$type)
+        $type['access_arguments'] = unserialize($type['access_arguments']);
+  }
+  if ($filter && !empty($types)) {
+    if (!empty($filtered))
+      return $filtered;
+    return $filtered = array_filter($types, create_function('&$item', 'return is_numeric($callback = empty($item["access_callback"]) ? 0 : trim($item["access_callback"])) ? (bool) $callback : call_user_func_array($callback, $item["access_arguments"]);'));
+  }
+  return $types;
+}

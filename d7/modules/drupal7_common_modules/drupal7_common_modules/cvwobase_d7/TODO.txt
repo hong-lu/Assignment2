@@ -1,0 +1,19 @@
+TODO TASK
+*********
+
+TASK: Check current workarounds due to url() (in cvwobase_d7.test) to see if there are neater ways, every time Drupal upgrades (now 7.0)
+ENTRY BY/ON: Patrick/22 May 2011
+ASSIGNED TO: ?
+
+TASK:
+ENTRY BY/ON: Name/Date
+ASSIGNED TO: Name
+
+
+
+COMPLETED TASK
+**************
+TASK:
+ENTRY BY/ON: Name/Date
+ASSIGNED TO: Name
+COMPLETED BY/ON: Name/Date

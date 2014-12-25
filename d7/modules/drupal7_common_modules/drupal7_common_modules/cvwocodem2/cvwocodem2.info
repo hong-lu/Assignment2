@@ -1,0 +1,47 @@
+; Usage:
+; Register questions for a module in its .install file's this_module_install hook as follows:
+;
+; 1.Install muti-dimentional options
+;
+; $multi_dimention = array('top1'=>array('data'=>'top1',
+;                 'children'=>array('mid1'=>array('data'=>'mid1',
+;                                 'children'=>array('sub1'=>'sub1',
+;                                         'sub2'=>'sub2',
+;                                         'sub3'=>'sub3')
+;                                ),
+;                           'mid2'=>'mid2',
+;                         'mid3'=>'mid3'
+;                         )
+;                ),
+;           'top2'=>'top2',
+;         'top3'=>'top3',
+;         'top4'=>'top4'
+;         );
+; cvwocodem_registerquestion('this_module','this_question',$multi_dimention);
+;
+; 2. Install single-dinemtional options
+;   $single_dimention = array(1=>'red',2=>'blue',3=>'green');
+; cvwocodem2_registerquestion('cvwocodemtest',2,'Primary Colours',$single_dimention);
+;
+;
+; Deregister questions in its .install file's this_module_uninstall hook as follows:
+; cvwocodem_delquestions('this_module');
+;
+; Get options for a question in any form element accepting options (such as select) as follows:
+; '#options' => cvwocodem_getoptions('this_module','this_question');
+;
+; For an implementation example refer to the cvwocodemtest module
+
+; $Id$
+
+name = CVWO Code Maintenance 2nd Version
+description = Module that maintains selectable options for drop down boxes across CVWO modules
+core = 7.x
+version = 7.x-2.x
+package = "CVWO Core"
+dependencies[] = tag_it
+files[] = cvwocodem2_api.inc
+files[] = cvwocodem2_constants.php
+stylesheets[all][] = cvwocodem2_tag.css
+scripts[] = cvwocodem2_tag.js
+configure = admin/config/cvwo/cvwocodem2

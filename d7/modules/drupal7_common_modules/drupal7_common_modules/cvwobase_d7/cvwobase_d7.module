@@ -1,0 +1,470 @@
+<?php
+/*
+ * The MIT License
+ *
+ * Copyright 2011-2013 Computing for Volunteer Welfare Organizations (CVWO),
+ * National University of Singapore.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+/**
+ * @file
+ * Main module file for cvwobase_d7. Defines permissions, menu routers and page initialization tasks.
+ */
+namespace {
+	use CVWO\Base as Base;
+
+	require_once drupal_get_path('module', 'cvwobase_d7').'/cvwobase_d7_constants.php';
+	require_once drupal_get_path('module', CVWOBASE_MODULE).'/cvwobase_d7_api.php';
+	require_once drupal_get_path('module', CVWOBASE_MODULE).'/cvwobase_d7_db_api.php';
+
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_db_api2.php';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_form.inc';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_form_elements.inc';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_form_image_upload.inc';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_form_multiple_input.inc';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_util.inc';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_search.php';
+
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_person.inc';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_person_form.inc';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_person_select.inc';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_person_nok.inc';
+
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_organisation.inc';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_organisation_form.inc';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_organisation_select.inc';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_organisation_contact.inc';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_organisation_list.inc';
+	
+	
+	/**
+	 * Implements hook_permission().
+	 */
+	function cvwobase_d7_permission() {
+		return array(
+			CVWOBASE_D7_SETTINGS_ADMIN_PERM => array(
+				'title' => t('Administer cvwobase settings'),
+				'restrict access' => TRUE
+			),
+			CVWOBASE_D7_ADMIN_AUDIT_PERM => array(
+				'title' => t('Administer CVWO Audit log'),
+				'restrict access' => TRUE
+			),
+			CVWOBASE_D7_ACCESS_AUDIT_PERM => array(
+				'title' => t('Access CVWO Audit log')
+			)
+		);
+	}
+
+	/**
+	 * Implements hook_menu().
+	 */
+	function cvwobase_d7_menu()
+	{
+		$items['audit']								 = array(
+			'title'				 => 'Audit Log',
+			'page callback'		 => 'drupal_get_form',
+			'page arguments'	 => array('cvwobase_d7_audit_form'),
+			'access arguments'	 => array(CVWOBASE_D7_ACCESS_AUDIT_PERM),
+			'file'				 => 'cvwobase_d7_audit.inc',
+			'type'				 => MENU_NORMAL_ITEM
+		);
+
+		//CVWO settings.
+		$items['admin/config/cvwo/' . CVWOBASE_MODULE] = array(
+			'title'				 => 'CVWO Base Settings',
+			'description'		 => 'Modify CVWO settings, like the email authentication details and PHP binary path',
+			'page callback'		 => 'drupal_get_form',
+			'page arguments'	 => array('cvwobase_d7_admin_form'),
+			'access arguments'	 => array(CVWOBASE_D7_SETTINGS_ADMIN_PERM),
+			'file'				 => 'cvwobase_d7_admin.inc',
+			'weight'			 => -50
+		);
+
+		//CVWO Abstract Person
+		if (Base\DEBUG)
+		{
+			$items = array_merge($items, array(
+				Base\MODULE_NAME . '/person' => array(
+					'title'				 => 'Person',
+					'page callback'		 => 'drupal_get_form',
+					'page arguments'	 => array('\CVWO\Base\person_edit_form'),
+					'type'				 => MENU_NORMAL_ITEM,
+					'access arguments'	 => array(Base\ADD_PERM),
+					'file'				 => 'cvwobase_d7_person.inc'
+				),
+				Base\MODULE_NAME . '/person/add' => array(
+					'title'				 => 'Add',
+					'page callback'		 => 'drupal_get_form',
+					'page arguments'	 => array('\CVWO\Base\person_edit_form'),
+					'type'				 => MENU_LOCAL_ACTION,
+					'access arguments'	 => array(Base\ADD_PERM),
+					'file'				 => 'cvwobase_d7_person.inc'
+				),
+				Base\MODULE_NAME . '/person/%/edit' => array(
+					'title'				 => 'Edit',
+					'page callback'		 => 'drupal_get_form',
+					'page arguments'	 => array('\CVWO\Base\person_edit_form', 2),
+					'type'				 => MENU_LOCAL_TASK,
+					'access arguments'	 => array(Base\EDIT_PERM),
+					'file'				 => 'cvwobase_d7_person.inc'
+				),
+				Base\MODULE_NAME . '/person/%/nok' => array(
+					'title'				 => 'NOK',
+					'page callback'		 => 'drupal_get_form',
+					'page arguments'	 => array('\CVWO\Base\person_nok_form', 2),
+					'type'				 => MENU_LOCAL_TASK,
+					'access arguments'	 => array(Base\EDIT_PERM),
+					'file'				 => 'cvwobase_d7_person_nok.inc'
+				),
+				Base\MODULE_NAME . '/person/%/nok/%/%' => array(
+					'title'				 => 'NOK',
+					'page callback'		 => 'drupal_get_form',
+					'page arguments'	 => array('\CVWO\Base\person_nok_form', 2, 4, 5),
+					'type'				 => MENU_LOCAL_TASK,
+					'access arguments'	 => array(Base\EDIT_PERM),
+					'file'				 => 'cvwobase_d7_person_nok.inc'
+				)
+			));
+			
+			/**
+			 * Define menu items for organisation
+			 */
+			$items[Base\MODULE_NAME . '/organisation'] = array(
+				'title'				 => t('Organisations'),
+				'page callback'		 => 'drupal_get_form',
+				'page arguments'	 => array('\CVWO\Base\organisation_list'),
+				'type'				 => MENU_NORMAL_ITEM,
+				'access arguments'	 => array(Base\VIEW_ORG_PERM),
+				'file'				 => 'cvwobase_d7_organisation_list.inc'
+			);
+
+			$items[Base\MODULE_NAME . '/organisation/list'] = array(
+				'title'				 => t('Organisation'),
+				'type'				 => MENU_DEFAULT_LOCAL_TASK,
+			);
+
+			$items[Base\MODULE_NAME . '/organisation/add'] = array(
+				'title'				 => t('Add Organisation'),
+				'page callback'		 => 'drupal_get_form',
+				'page arguments'	 => array('\CVWO\Base\organisation_edit'),
+				'type'				 => MENU_LOCAL_ACTION,
+				'access arguments'	 => array(Base\ADD_ORG_PERM),
+				'file'				 => 'cvwobase_d7_organisation.inc',
+			);
+			
+			$items[Base\MODULE_NAME . '/organisation/%'] = array(
+				'title'				 => t('Edit Organisation'),
+				'page callback'		 => 'drupal_get_form',
+				'page arguments'	 => array('\CVWO\Base\organisation_edit', 2),
+				'type'				 => MENU_NORMAL_ITEM,
+				'access arguments'	 => array(Base\EDIT_ORG_PERM),
+				'file'				 => 'cvwobase_d7_organisation.inc'
+			);
+
+			$items[Base\MODULE_NAME . '/organisation/%/edit'] = array(
+				'title'				 => t('Edit Organisation'),
+				'type'				 => MENU_DEFAULT_LOCAL_TASK,
+			);
+
+			$items[Base\MODULE_NAME . '/organisation/%/contact'] = array(
+				'title'				 => t('Contact Person'),
+				'page callback'		 => 'drupal_get_form',
+				'page arguments'	 => array('\CVWO\Base\organisation_contact', 2),
+				'type'				 => MENU_LOCAL_TASK,
+				'access arguments'	 => array(Base\EDIT_ORG_PERM),
+				'file'				 => 'cvwobase_d7_organisation_contact.inc',
+				'weight'			 => 10
+			);
+
+			$items[Base\MODULE_NAME . '/organisation/%/contact/%/%'] = array(
+				'title'				 => t('Contact Person'),
+				'page callback'		 => 'drupal_get_form',
+				'page arguments'	 => array('\CVWO\Base\organisation_contact', 2, 4, 5),
+				'type'				 => MENU_DEFAULT_LOCAL_TASK,
+				'access arguments'	 => array(Base\EDIT_ORG_PERM),
+				'file'				 => 'cvwobase_d7_organisation_contact.inc'
+			);
+
+			$items[Base\MODULE_NAME . '/organisation/%/delete'] = array(
+				'title'				 => t('Delete Organisation'),
+				'page callback'		 => 'drupal_get_form',
+				'page arguments'	 => array('\CVWO\Base\organisation_delete', 2),
+				'type'				 => MENU_CALLBACK,
+				'access arguments'	 => array(Base\DEL_ORG_PERM),
+				'file'				 => 'cvwobase_d7_organisation.inc'
+			);
+		}
+
+		//Allow our forms to access the person's profile picture, given the
+		//correct permissions.
+		$items[Base\MODULE_NAME . '/person/%/photo'] = array(
+			'page callback'				 => '\CVWO\Base\person_photo',
+			'page arguments'			 => array(2),
+			'type'						 => MENU_CALLBACK,
+			'access arguments'			 => array(Base\VIEW_PERM),
+			'file'						 => 'cvwobase_d7_person.inc'
+		);
+
+		//Define a search callback to get a person from a fuzzy name/NRIC search
+		$items[Base\MODULE_NAME . '/person/search'] = array(
+			'page callback'				 => '\CVWO\Base\person_search_callback',
+			'page arguments'			 => array(3, null),
+			'type'						 => MENU_CALLBACK,
+			'access arguments'			 => array(Base\VIEW_PERM),
+			'file'						 => 'cvwobase_d7_person.inc'
+		);
+		
+		//Define a search callback to get an organisation from a fuzzy name search
+		$items[Base\MODULE_NAME . '/organisation/search'] = array(
+			'page callback'		 => '\CVWO\Base\organisation_search_callback',
+			'page arguments'	 => array(3, null),
+			'type'				 => MENU_CALLBACK,
+			'access arguments'	 => array(Base\VIEW_ORG_PERM),
+			'file'				 => 'cvwobase_d7_organisation.inc'
+		);
+
+		return $items;
+	}
+
+	/**
+	 * Implements hook_init().
+	 */
+	function cvwobase_d7_init()
+	{
+		//Load our bootstrap CVWO Base JavaScript client file, which defines the
+		//root "namespace" of our client-side code.
+		drupal_add_js(drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7.js',
+			array('every_page' => true));
+
+		//Load our bootstrap CVWO Base CSS for printer-friendliness.
+		drupal_add_css(drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7.print.css',
+			array('media' => 'print', 'every_page' => true));
+		
+		//And our form base CSS
+		drupal_add_css(drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_form.css',
+			array('every_page' => true));
+		
+		//Merge the session information from our own user information.
+		//$GLOBALS['user'] has session data as well, so we cannot directly
+		//replace the object.
+		global $user;
+		if ($user_obj = user_load($user->uid))
+			foreach ($user_obj as $key => &$value)
+				$user->$key = $value;
+
+		//TODO: What is this for?
+		$error_queue = DrupalQueue::get(CVWOBASE_MAIL_ERROR_QUEUE);
+		while ($error = $error_queue->claimItem())
+		{
+			drupal_set_message(t('Unable to send message: PEAR Mail reports error "%error"', array('%error' => $error->data)), 'error');
+			$error_queue->deleteItem($item);
+		}
+	}
+
+	/**
+	 * Implements hook_requirements().
+	 */
+	function cvwobase_d7_requirements($phase)
+	{
+		$reqs = array();
+		switch ($phase)
+		{
+			case 'install':
+				$t = get_t();
+				// cvwobase requires PEAR Mail.
+				set_error_handler('exception_error_handler');
+				try
+				{
+					require 'System.php';
+					@require 'Mail.php'; // raises deprecated warning
+					if (!class_exists('System', FALSE) || !class_exists('Mail', FALSE))
+						throw new Exception();
+				}
+				catch (Exception $e)
+				{
+					$reqs['PEAR Mail'] = array(
+						'title'			 => $t('PEAR Mail'),
+						'description'	 => $t('The cvwobase module requires PEAR and the PEAR Mail package to run.'),
+						'severity'		 => REQUIREMENT_ERROR
+					);
+				}
+				restore_error_handler();
+				break;
+				
+			case 'runtime':
+				if (!variable_get(CVWOBASE_D7_PHP_BINARY, FALSE))
+				{
+					$reqs['PHP Binary'] = array(
+						'title'			 => t('CVWO Base (D7) PHP Binary Path'),
+						'severity'		 => REQUIREMENT_WARNING,
+						'description'	 => t('The path for the PHP binary is not set in <a href="@config">the CVWO Base configuration page</a>', array('@config' => url('admin/config/cvwo/cvwobase')))
+					);
+				}
+		}
+
+		Base\person_hook_requirements($phase, $reqs);
+		return $reqs;
+	}
+
+/**
+ * Implements hook_library().
+ */
+function cvwobase_d7_library() {
+  return array(
+    'qTip' => array(
+      'title' => 'qTip - The jQuery tooltip plugin',
+      'website' => 'http://craigsworks.com/projects/qtip/',
+      'version' => '1.0.0-rc3',
+      'js' => array(
+        drupal_get_path('module', CVWOBASE_MODULE).'/qTip/jquery.qtip-1.0.0-rc3.min.js' => array()
+      )
+    )
+  );
+}
+
+/**
+ * Implements hook_user_load().
+ */
+function cvwobase_d7_user_load($users) {
+  /*The reason to comment it out is that the function is trying to modify the user properties gotten from
+   * the user table, more details, please refer to the following url
+   * https://api.drupal.org/api/drupal/modules!user!user.api.php/function/hook_user_load/7
+   * 
+   * $persons = db_select(CVWO_PERSON_TABLE, 'p')
+                      ->fields('p')
+                      ->condition('uid', array_keys($users))
+                      ->addTag(CVWOBASE_MODULE)
+                      ->addTag(CVWO_PERSON_TABLE)
+                      ->execute()
+                      ->fetchAllAssoc('uid');
+  foreach ($persons as $uid => &$person)
+    foreach ($person as $prop => &$value)
+      $users[$uid]->$prop = $value;
+   */
+   
+}
+
+/**
+ * Implements hook_username_alter().
+ */
+function cvwobase_d7_username_alter(&$name, $account) {
+  $parts = array();
+  if (!empty($account->first_name))
+    $parts[] = $account->first_name;
+  if (!empty($account->last_name))
+    $parts[] = $account->last_name;
+  if (!empty($parts))
+    $name = implode(' ', $parts);
+}
+
+/**
+ * Implements hook_hook_info().
+ */
+function cvwobase_d7_hook_info() {
+  return array(
+    'element_info' => array(
+      'group' => 'elements'
+    )
+  );
+}
+
+	/**
+	 * Implements hook_element_info().
+	 *
+	 * The managed file element may be used independently anywhere in Drupal.
+	 */
+	function cvwobase_d7_element_info()
+	{
+		$file_path		 = drupal_get_path('module', 'file');
+		$types['files']	 = array(
+			'#input'				 => true,
+			'#process'				 => array('\CVWO\Base\cvwobase_files_process'),
+			'#value_callback'		 => '\CVWO\Base\cvwobase_files_value',
+			'#element_validate'		 => array('\CVWO\Base\cvwobase_files_validate'),
+			'#theme'				 => 'file_managed_file',
+			'#theme_wrappers'		 => array('form_element'),
+			'#progress_indicator'	 => 'throbber',
+			'#progress_message'		 => null,
+			'#upload_validators'	 => array(),
+			'#upload_location'		 => null,
+			'#attached'				 => array(
+				'css'	 => array($file_path . '/file.css'),
+				'js'	 => array($file_path . '/file.js'),
+			),
+		);
+
+		$types['select_person']	= array(
+			'#input'				 => true,
+			'#tree'					 => true,
+			'#process'				 => array('\CVWO\Base\person_select_process'),
+			'#value_callback'		 => '\CVWO\Base\person_select_value_callback',
+			'#element_validate'		 => array('\CVWO\Base\person_select_validate'),
+			'#theme_wrappers'		 => array('form_element'),
+			'#attached'				 => array(
+				'js'	 => array(drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_person_select.js'),
+				'css'	 => array(drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_person_select.css'),
+			)
+		);
+
+		$types['select_organisation'] = array(
+			'#input'				 => true,
+			'#tree'					 => true,
+			'#process'				 => array('\CVWO\Base\organisation_select_process'),
+			'#value_callback'		 => '\CVWO\Base\organisation_select_value_callback',
+			'#element_validate'		 => array('\CVWO\Base\organisation_select_validate'),
+			'#theme_wrappers'		 => array('form_element'),
+			'#attached'				 => array(
+				'js'	 => array(drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_organisation_select.js'),
+				'css'	 => array(drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_organisation_select.css'),
+			)
+		);
+
+		return $types;
+	}
+
+	/**
+	 * Implements hook_theme().
+	 */
+	function cvwobase_d7_theme($existing, $type, $theme, $path)
+	{
+		return array(
+			'cvwobase_files_old' => array(
+				'render element' => 'elems',
+				'files'			 => 'cvwobase_d7_form_elements.inc'
+			),
+			'form_image_upload'	 => array(
+				'render element' => 'element'
+			)
+		);
+	}
+
+	/**
+	 * Implements the marshal function for hook_theme's form_image_upload #theme.
+	 *
+	 * This just forwards to the actual implementation in the namespaced code.
+	 */
+	function theme_form_image_upload($variables)
+	{
+		return \CVWO\Base\theme_form_image_upload($variables);
+	}
+
+}

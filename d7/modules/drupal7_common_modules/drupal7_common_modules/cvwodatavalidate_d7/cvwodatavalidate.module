@@ -1,0 +1,77 @@
+<?php
+/**
+ * Copyright (c) 2008-2013
+ * Computing for Volunteer Welfare Organizations (CVWO)
+ * National University of Singapore
+ *
+ * Permission is hereby granted, free of charge, to any person obtainin
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject
+ * to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+ 
+// $Id:
+ 
+//Include the constants file
+
+//require_once drupal_get_path("module", 'lions_data_validate') ."/lions_data_validate_constants.php";
+
+
+function cvwo_data_validate_permission() {
+    return array(
+		CVWO_DATA_VALIDATE_PERM => array(
+			'title' => t(''),
+			'description' => t('Update and Delete Imcomplete Person Records'),
+			'restrict access' => TRUE,
+		),
+    );
+}
+
+//Implementation of hook_menu()
+
+function cvwo_data_validate_menu() {
+
+	$items = array();
+
+	$items[CVWO_DATA_VALIDATE_NAME] = array(
+		'title' => t("Data Validate"),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('cvwo_data_validate'), //default section callback
+		'file' => 'cvwodatavalidate.inc',
+		'access callback' => 'user_access', // access control
+		'access arguments' => array(CVWO_DATA_VALIDATE_PERM),
+		'type' => MENU_NORMAL_ITEM,
+	    'weight' => -8,
+	
+	);
+	
+	
+	$items[CVWO_DATA_VALIDATE_NAME . '/%'] = array(
+		'title' => t("Data Validate"),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('cvwo_data_validate',1), //default section callback
+		'file' => 'cvwodatavalidate.inc',
+		'access callback' => 'user_access', // access control
+		'access arguments' => array(CVWO_DATA_VALIDATE_PERM),
+		'type' => MENU_CALLBACK,
+	);
+
+		
+  return $items;
+}	

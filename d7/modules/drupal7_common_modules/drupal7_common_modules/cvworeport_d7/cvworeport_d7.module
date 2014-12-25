@@ -1,0 +1,322 @@
+<?php
+/*
+  Copyright (c) 2011-2012 Computing for Volunteer Welfare Organisations (CVWO)
+  National University of Singapore
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
+  files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
+  modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
+  Software is furnished to do so, subject to the following conditions:
+   
+  1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+  Software.
+   
+  2. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+// $Id$
+
+/**
+ * @file
+ * Main module file for cvworeport_d7. Defines menu routers.
+ */
+require_once drupal_get_path('module', CVWOREPORT_MODULE).'/cvworeport_d7_constants.php';
+require_once drupal_get_path('module', CVWOREPORT_MODULE).'/cvworeport_d7_api.inc';
+require_once drupal_get_path('module', CVWOREPORT_MODULE).'/cvworeport_d7_streamwrapper.inc';
+
+/**
+* Valid permission for this module
+* Only the user who has add permission can create
+* queries and grant a variety of access modes
+* to other users
+* Implementation of hook_permission
+*/
+
+function cvworeport_d7_permission(){
+	return array(
+		CVWO_REPORT_SETUP_PERM => array(
+			'title' => t('Setup report module'),
+		),
+		CVWO_REPORT_MANAGE_CATEGORIES_PERM => array(
+			'title' => t('Manage categories in report module'),
+		),
+		CVWO_REPORT_MANAGE_REPORTS_PERM => array(
+			'title' => t('Manage reports weights and categories'),
+		),
+		CVWO_REPORT_ADD_PERM => array(
+			'title' => t('Add report'),
+		), 
+		CVWO_REPORT_ADD_SPECIAL_PERM => array(
+			'title' => t('Add special report'),
+		), 
+		CVWO_REPORT_NORMAL_ACCESS_PERM => array(
+			'title' => t('View listing of reports'),
+		),
+	);
+}
+
+/**
+* Implementation of hook_menu
+*/
+function cvworeport_d7_menu(){
+	$items = array();
+	
+	$result = get_report_setup();
+
+	$items['admin/config/cvwo/' . CVWOREPORT_MODULE] = array(
+		'title' => t('Reports'),
+		'description' => t('Configure the CVWO Reports module.'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('cvwo_report_setup_form'),
+		'file' => 'cvworeport_d7_localisation.inc',
+		'access callback' => 'user_access',
+		'access arguments' => array(CVWO_REPORT_SETUP_PERM),
+		'type' => MENU_NORMAL_ITEM
+	);
+
+	$items[CVWOREPORT_MODULE] = array(
+    	'title' => $result ? $result['menu_name'] : 'Reports',
+		'page callback' => 'drupal_get_form',
+    	'page arguments' => array ('cvwo_report_list_form'),
+		'file' => 'cvworeport_d7_list.inc',
+		'access callback' => 'user_access',
+		'access arguments' => array(CVWO_REPORT_NORMAL_ACCESS_PERM),
+    	'type' => MENU_NORMAL_ITEM,
+	);
+	
+	$items[CVWOREPORT_MODULE.'/list'] = array(
+    	'title' => 'List Reports',
+		'weight' => 0,
+    	'type' => MENU_DEFAULT_LOCAL_TASK,
+	);
+	
+	$items[CVWOREPORT_MODULE.'/manage_category'] = array(
+		'title' => 'Manage Categories',
+    	'page callback' => 'drupal_get_form',
+    	'page arguments' => array('cvwo_report_manage_category_form'),
+		'file' => 'cvworeport_d7_category.inc',
+		'access callback' => 'user_access',
+		'access arguments' => array(CVWO_REPORT_MANAGE_CATEGORIES_PERM),
+		'weight' => 2,
+    	'type' => MENU_LOCAL_TASK,
+	);
+	
+	$items[CVWOREPORT_MODULE.'/delete_category/%/%'] = array(
+		'title' => 'Delete Categories',
+    	'page callback' => 'drupal_get_form',
+    	'page arguments' => array('cvwo_report_delete_category_form', 2, 3),
+		'file' => 'cvworeport_d7_category.inc',
+		'access callback' => 'user_access',
+		'access arguments' => array(CVWO_REPORT_MANAGE_CATEGORIES_PERM),
+    	'type' => MENU_CALLBACK,
+	);
+	
+	$items[CVWOREPORT_MODULE.'/manage_report'] = array(
+		'title' => 'Manage Reports',
+		'page_callback' => 'drupal_get_form',
+    	'page arguments' => array ('cvwo_report_list_form', TRUE),
+		'file' => 'cvworeport_d7_list.inc',
+		'access callback' => 'user_access',
+		'access arguments' => array(CVWO_REPORT_MANAGE_REPORTS_PERM),
+    	'type' => MENU_LOCAL_TASK,
+	);
+	
+	$items[CVWOREPORT_MODULE.'/add'] = array(
+		'title' => 'Add Report',
+    	'page callback' => 'drupal_get_form',
+    	'page arguments' => array('cvwo_report_form', 'add', FALSE),
+		'file' => 'cvworeport_d7_report_form.inc',
+		'access callback' => 'user_access',
+		'access arguments' => array(CVWO_REPORT_ADD_PERM),
+		'weight' => 1,
+    	'type' => MENU_LOCAL_TASK,
+	);
+	
+	$items[CVWOREPORT_MODULE.'/addspecial'] = array(
+		'title' => 'Add Special Report',
+    	'page callback' => 'drupal_get_form',
+    	'page arguments' => array('cvwo_report_form', 'add', TRUE),
+		'file' => 'cvworeport_d7_report_form.inc',
+		'access callback' => 'user_access',
+		'access arguments' => array(CVWO_REPORT_ADD_SPECIAL_PERM),
+		'weight' => 1,
+    	'type' => MENU_LOCAL_TASK,
+	);
+	
+	$items[CVWOREPORT_MODULE.'/edit/%'] = array(
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('cvwo_report_form', 'edit', FALSE, 2),
+		'title' => 'Edit Report',
+		'file' => 'cvworeport_d7_report_form.inc',
+		'access callback' => 'cvwo_report_access',
+		'access arguments' => array(CVWO_REPORT_VIEW_AND_EDIT_PERM, 2),
+		'type' => MENU_CALLBACK,
+	);
+	
+	$items[CVWOREPORT_MODULE.'/editspecial/%'] = array(
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('cvwo_report_form', 'edit', TRUE, 2),
+		'title' => 'Edit Special Report',
+		'file' => 'cvworeport_d7_report_form.inc',
+		'access callback' => 'cvwo_report_access',
+		'access arguments' => array(CVWO_REPORT_VIEW_AND_EDIT_PERM, 2),
+		'type' => MENU_CALLBACK,
+	);
+	
+	$items[CVWOREPORT_MODULE.'/delete_report/%'] = array(
+		'title' => 'Add Report',
+    	'page callback' => 'drupal_get_form',
+    	'page arguments' => array('cvwo_report_delete_report_form', 2),
+		'file' => 'cvworeport_d7_list.inc',
+		'access callback' => 'cvwo_report_access',
+		'access arguments' => array(CVWO_REPORT_VIEW_EDIT_AND_DELETE_PERM, 2),
+    	'type' => MENU_CALLBACK,
+	);
+
+	$items[CVWOREPORT_MODULE.'/display/%'] = array(
+    	'page callback' => 'drupal_get_form',
+		'page arguments' => array ('cvwo_report_display_form', 2),
+		'file' => 'cvworeport_d7_display.inc',
+		'access callback' => 'cvwo_report_access',
+		'access arguments' => array(CVWO_REPORT_VIEW_ONLY_PERM, 2),
+    	'type' => MENU_CALLBACK,
+	);
+	
+	$items[CVWOREPORT_MODULE.'/cvwo_report_staff_nric_autocomplete/%menu_tail'] = array(
+		'page callback' => 'cvworeport_staff_nric_autocomplete',
+		'page arguments' => array(2),
+		'load arguments' => array('%map', '%index'),
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK, 
+	);
+	
+	$items[CVWOREPORT_MODULE.'/cvwo_report_name_autocomplete'] = array(
+		'page callback' => 'cvworeport_name_autocomplete',
+		'access callback' => TRUE,
+		'type' => MENU_CALLBACK, 
+	);
+
+	return $items;
+}
+
+/**
+ * Implements hook_stream_wrappers
+ * @return array
+ */
+function cvworeport_d7_stream_wrappers() {
+	return array(
+		'cvworeport' => array(
+			'name' => CVWOREPORT_MODULE,
+			'class' => 'CvwoReportStreamWrapper',
+			'description' => t('Abstracts database- and file-based reports into abstract '
+				. 'PHP streams to be used together with include()'),
+			'type' => STREAM_WRAPPERS_READ
+		)
+	);
+}
+
+function cvworeport_get_accessible_reports($uid) {
+	$accessible_reports = &drupal_static(__FUNCTION__, array());
+	if (isset($accessible_reports[$uid])) {
+		return $accessible_reports[$uid];
+	}
+	
+	$reports = cvwo_select(CVWO_REPORT_TABLE, 'r')
+	->fields('r', array('report_id', 'report_name', 'weight', 'category_id', 'access_function', 'description', 'special', 'status'))
+	->condition('r.status', STATUS_ENABLED)
+	->execute()
+	->fetchAllAssoc('report_id', PDO::FETCH_ASSOC);
+
+	foreach($reports as $report_id => $report) {
+		$func = $report['access_function'];
+		if (function_exists($func)) {
+			$permission = $func($report_id);
+			if ($permission && $permission != CVWO_REPORT_NO_PERMISSION) {
+				$accessible_reports[$uid][$report_id] = $permission;
+			}
+		}
+	}
+	return isset($accessible_reports[$uid]) ? $accessible_reports[$uid] : array();
+}
+
+/**
+ * Autocomplete callback for report name
+ * Select by report name
+ * Display  name
+ *
+ * @param $string
+ * 		String typed into autocomplete field
+ */
+function cvworeport_name_autocomplete($string = ""){
+	global $user;
+	$accessible_reports = cvworeport_get_accessible_reports($user->uid);
+
+	$query = cvwo_select(CVWO_REPORT_TABLE, 'r')
+				->fields('r', array('report_id', 'report_name'))
+				->condition('status', STATUS_ENABLED, '=');
+	if (!empty($accessible_reports)) {
+		$query->condition('report_id', $accessible_reports);
+	} else drupal_json_output(array());
+	
+	$result = $query->condition('report_name', '%' . $string . '%', 'LIKE')
+				->execute();
+				
+	while($data = $result->fetchAssoc()) {
+        $matches[$data['report_name']] = check_plain($data['report_name']);
+    }
+	
+    drupal_json_output($matches);
+}
+
+function cvworeport_staff_nric_autocomplete($string) {
+	$result = get_report_setup();
+
+	if ($result) {
+		$func = create_function('$string', $result['nric_autocomplete']);
+		$results = $func($string);
+		$matches = array();
+		foreach ($results as $id => $key) {
+			$matches[$key['nric_fin']] = check_plain($key['name']);
+		}
+		drupal_json_output($matches);
+	} else {
+		return array();
+	}
+}
+
+function cvworeport_d7_theme($existing, $type, $theme, $path) {
+	return array(
+		'cvwo_report_manage_category_form' => array(
+			'render element' => 'form',
+			'file' => 'cvworeport_d7_category.inc',
+		),
+		'cvwo_report_add_category_form' => array(	
+			'render element' => 'form',
+			'file' => 'cvworeport_d7_category.inc',
+		),
+		'cvwo_report_list_form' => array(
+			'render element' => 'form',
+			'file' => 'cvworeport_d7_list.inc',
+		),
+		'cvwo_report_roles_form' => array(
+			'render element' => 'form',
+			'file' => 'cvworeport_d7_report_form.inc',
+		),
+		'cvwo_report_users_form' => array(
+			'render element' => 'form',
+			'file' => 'cvworeport_d7_report_form.inc',
+		),
+		'cvwo_report_query_form' => array(
+			'render element' => 'form',
+			'file' => 'cvworeport_d7_report_form.inc',
+		),
+	);
+}
+
+function cvwo_report_access($permission, $report_id) {
+	$report = cvwo_report_load($report_id);
+	$func = $report['access_function'];
+	if (function_exists($func) && $func($report_id) >= $permission)
+		return TRUE;
+}

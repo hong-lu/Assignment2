@@ -1,0 +1,209 @@
+<?php
+
+/*
+ * The MIT License
+ *
+ * Copyright 2013 Computing for Volunteer Welfare Organizations (CVWO),
+ * National University of Singapore.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+namespace CVWO\Community {
+
+	use \CVWO\Base\Database as db;
+
+	function home_visit_install_codem()
+	{
+		cvwocodem2_registerquestion(MODULE_NAME, HOME_VISIT_HOME_CONDITION_QUESTION, array(
+			t('Clean'),
+			t('Bright'),
+			t('Smelly'),
+			t('Dirty')
+		));
+
+		cvwocodem2_registerquestion(MODULE_NAME, HOME_VISIT_REQUIRES_ATTENTION_QUESTION, array(
+			t('Unevaluated'),
+			t('No'),
+			t('Yes')
+		));
+	}
+
+	function home_visit_build_schema(&$schema)
+	{
+		$schema[HOME_VISIT_REPORT_TABLE] = array(
+			'description' => t('Stores Home Visit information.'),
+			'fields' => array(
+				'home_visit_report_id' => array(
+					'type' => 'serial',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('The primary key.')
+				),
+				'worker_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('Record down visited_by'),
+				),
+				'person_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('This corresponds to the Community Person\'s person_id'),
+				),
+				'address_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('This corresponds to the CVWO Address Table\'s address_id'),
+				),
+				'date_visited' => array(
+					'type' => 'datetime',
+					'mysql_type' => 'datetime',
+					'description' => t('The date and time of visit'),
+				),
+				'requires_attention' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('Does it require attention? Yes or No (additional unevaluated option for non_lion_sites).'),
+				),
+				'is_successful' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('Is this home_visit successful?'),
+				),
+				'items_brought' => array(
+					'type' => 'text',
+					'size' => 'medium',
+					'description' => t('Allow users to enter the items brought during home_visit'),
+				),
+				'remarks' => array(
+					'type' => 'text',
+					'size' => 'medium',
+					'description' => t('Allow users to enter remarks'),
+				)
+			),
+			'primary key' => array('home_visit_report_id'),
+			'indexes' => array(
+				'person_id' => array('person_id'),
+				'worker_id' => array('worker_id'),
+			),
+			'foreign keys' => array(
+				'person_relation' => array(
+					'table' => PERSON_TABLE,
+					'person_id' => 'person_id'
+				),
+				'worker_relation' => array(
+					'table' => WORKER_TABLE,
+					'worker_id' => 'person_id'
+				),
+				'address_relation' => array(
+					'table' => CVWO_ADDRESS_TABLE,
+					'address_id' => 'address_id'
+				)
+			)
+		);
+		db\table_include_soft_delete($schema[HOME_VISIT_REPORT_TABLE]);
+		db\table_include_timestamps($schema[HOME_VISIT_REPORT_TABLE]);
+
+		$schema[HOME_VISIT_REPORT_WORKER_TABLE] = array(
+			'description' => t('Stores Home Visit volunteers information.'),
+			'fields' => array(
+				'home_visit_report_worker_id' => array(
+					'type' => 'serial',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('The primary key')
+				),
+				'home_visit_report_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('This corresponds to the home visit\'s home_visit_id')
+				),
+				'worker_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('The worker in charge')
+				)
+			),
+			'primary key' => array('home_visit_report_worker_id'),
+			'indexes' => array(
+				'home_visit_id' => array('home_visit_report_id'),
+				'worker_id' => array('worker_id')
+			),
+			'foreign keys' => array(
+				'home_visit_relation' => array(
+					'table' => HOME_VISIT_REPORT_TABLE,
+					'home_visit_report_id' => 'home_visit_report_id'
+				),
+				'person_relation' => array(
+					'table' => PERSON_TABLE,
+					'person_id' => 'person_id'
+				),
+				'worker_relation' => array(
+					'table' => WORKER_TABLE,
+					'worker_id' => 'person_id'
+				)
+			)
+		);
+		db\table_include_soft_delete($schema[HOME_VISIT_REPORT_WORKER_TABLE]);
+		db\table_include_timestamps($schema[HOME_VISIT_REPORT_WORKER_TABLE]);
+
+		$schema[HOME_VISIT_REPORT_HOME_CONDITION_TABLE] = array(
+			'description' => t('Stores Home Visit Home Condition information.'),
+			'fields' => array(
+				'home_visit_report_home_condition_id' => array(
+					'type' => 'serial',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('The primary key')
+				),
+				'home_visit_report_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('This corresponds to the home visit\'s home_visit_id')
+				),
+				'home_condition' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('This stores the home condition codem answer')
+				)
+			),
+			'primary key' => array('home_visit_report_home_condition_id'),
+			'indexes' => array(
+				'home_visit_report_id' => array('home_visit_report_id')
+			),
+			'foreign keys' => array(
+				'home_visit_relation' => array(
+					'table' => HOME_VISIT_REPORT_TABLE,
+					'home_visit_report_id' => 'home_visit_report_id'
+				),
+			)
+		);
+		db\table_include_soft_delete($schema[HOME_VISIT_REPORT_HOME_CONDITION_TABLE]);
+		db\table_include_timestamps($schema[HOME_VISIT_REPORT_HOME_CONDITION_TABLE]);
+	}
+}

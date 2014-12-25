@@ -1,0 +1,678 @@
+<?php
+/*
+ * The MIT License
+ *
+ * Copyright 2013 Computing for Volunteer Welfare Organizations (CVWO),
+ * National University of Singapore.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+namespace CVWO\Base {
+	use \CVWO\Base\Database as db;
+
+	function person_install()
+	{
+		//Create the directory for profile pictures
+		if (!file_exists(PERSONAL_PARTICULARS_PROFILE_PHOTO_PATH))
+		{
+			drupal_mkdir(PERSONAL_PARTICULARS_PROFILE_PHOTO_PATH, null, true);
+		}
+
+		person_install_codem();
+	}
+
+	function person_uninstall()
+	{
+		drupal_rmdir(PERSONAL_PARTICULARS_PROFILE_PHOTO_PATH);
+	}
+
+	/**
+	 * Installs the Code Maintenance options used by the Base Abstract Person.
+	 */
+	function person_install_codem()
+	{
+		//Personal particulars form
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_NRIC_COLOUR_QUESTION,
+			array(
+				t('Singapore Pink NRIC'),
+				t('Singapore Blue NRIC'),
+				t('Singapore Birth Certificate'),
+				t('Certificate of Identity'),
+				t('Malaysian NRIC'),
+				t('Emergency Certificate'),
+				t('Foreigner ID Number'),
+				t('Others')
+			));
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_GENDER_QUESTION,
+			array(
+				t('Male'),
+				t('Female')
+			));
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_SALUTATION_QUESTION,
+			array(
+				t('Mr.'),
+				t('Ms.'),
+				t('Mdm.'),
+				t('Mrs.'),
+				t('Dr.')
+			));
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_MARITAL_STATUS_QUESTION,
+			array(
+				PERSONAL_PARTICULARS_MARITAL_STATUS_SEPARATED => t('Separated'),
+				PERSONAL_PARTICULARS_MARITAL_STATUS_DIVORCED => t('Divorced'),
+				PERSONAL_PARTICULARS_MARITAL_STATUS_MARRIED => t('Married'),
+				PERSONAL_PARTICULARS_MARITAL_STATUS_SINGLE => t('Single'),
+				PERSONAL_PARTICULARS_MARITAL_STATUS_WIDOWED => t('Widowed'),
+				PERSONAL_PARTICULARS_MARITAL_STATUS_COHABITING => t('Cohabiting')
+			));
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_NATIONALITY_QUESTION,
+			array(
+				t('Singaporean'),
+				t('Singaporean PR'),
+				t('Malaysian'),
+				t('PRC'),
+				t('Indian'),
+				t('Indonesian'),
+				t('Japanese'),
+				t('Filipino'),
+				t('Myanma (Burmese)'),
+				t('Vietnamese'),
+				t('Taiwanese'),
+				t('Tibetan'),
+				t('Stateless'),
+				t('Others')
+			));
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_PLACE_OF_BIRTH_QUESTION,
+			array(
+				t('Singapore'),
+				t('Malaysia')
+			));
+
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_RELIGION_QUESTION,
+			array(
+				t('Buddhism'),
+				t('Catholicism'),
+				t('Christianity'),
+				t('Hinduism'),
+				t('Islam'),
+				t('Sikhism'),
+				t('Taoism'),
+				t('Soka'),
+				t('Agnosticism (Free-Thinker)'),
+				t('No Religion'),
+				t('Others')
+			));
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_RACE_QUESTION,
+			array(
+				t('Chinese'),
+				t('Malay'),
+				t('Indian'),
+				t('Sikh'),
+				t('Eurasian'),
+				t('Indonesian'),
+				t('Japanese'),
+				t('Filipino'),
+				t('Myanma (Burmese)'),
+				t('Sri Lankan (Ceylonese)'),
+				t('Tibetan'),
+				t('Vietnamese'),
+				t('Others')
+			));
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_ETHNICITY_QUESTION,
+			array(
+				t('Hokkien'),
+				t('Cantonese'),
+				t('Teochew'),
+				t('Hockchew'),
+				t('Anhui'),
+				t('Beijing'),
+				t('Fujian'),
+				t('Fuzhou'),
+				t('Hakka (Khek)'),
+				t('Hainanese'),
+				t('Heilongjiang'),
+				t('Hebei'),
+				t('Hubei'),
+				t('Hunan'),
+				t('Liaoning'),
+				t('Mandarin'),
+				t('Qingdao'),
+				t('Sichuan'),
+				t('Shandong'),
+				t('Shanghainese'),
+				t('Taiwanese'),
+				t('Tibetan'),
+				t('Wenzhou'),
+				t('Zhejiang'),
+				t('Malay'),
+				t('Malayalam'),
+				t('Tamil'),
+				t('Sikh'),
+				t('Kanmada'),
+				t('Sri Lankan (Ceylonese)'),
+				t('Filipino'),
+				t('Japanese'),
+				t('Myanma (Burmese)'),
+				t('Thai'),
+				t('Vietnamese')
+			));
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_OCCUPATION_QUESTION,
+			array());
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_OCCUPATION_STATUS_QUESTION,
+			array(
+				t('Employed/Self-Employed'),
+				t('Homemaker'),
+				t('Retired'),
+				t('Student'),
+				t('Unemployed'),
+				t('Others')
+			));
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_HIGHEST_EDUCATION_LEVEL_QUESTION,
+			array(
+				t('Not educated'),
+				t('Pre-Primary Education'),
+				t('Primary Education'),
+				t('GCE N-Level'),
+				t('GCE O-Level/Secondary Education'),
+				t('GCE A-Level/Pre-University'),
+				t('NITEC'),
+				t('Diploma'),
+				t('Degree'),
+				t('Self-taught')
+			));
+
+		//Contact Details form
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_CONTACT_TYPE_QUESTION,
+			array(
+				PERSONAL_PARTICULARS_CONTACT_TYPE_HOME => t('Home Phone'),
+				t('Work Phone'),
+				t('Fax'),
+				PERSONAL_PARTICULARS_CONTACT_TYPE_MOBILE => t('Mobile'),
+				t('Pager'),
+				t('Email Address'),
+				t('Others')
+			));
+
+		//Linguistic Abilities form
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_LANGUAGE_QUESTION,
+			array(
+				t('English'),
+				t('Mandarin'),
+				t('Hokkien'),
+				t('Cantonese'),
+				t('Teochew'),
+				t('Hakka'),
+				t('Hainanese'),
+				t('Malay'),
+				t('Tamil'),
+				t('Hindi'),
+				t('Punjabi'),
+				t('Malayalam'),
+				t('Thai')
+			));
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_LANGUAGE_COMPETENCY_QUESTION,
+			array(
+				t('Read'),
+				t('Listen'),
+				t('Write'),
+				t('Speak')
+			));
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_LANGUAGE_PROFICIENCY_QUESTION,
+			array(
+				t('Elementary'),
+				t('Intermediate'),
+				t('Advanced'),
+				t('Fluent')
+			));
+
+		//Address form
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_ADDRESS_TYPE_QUESTION,
+			array(
+				t('HDB Or HUDC Residential Address'),
+				t('JTC Flats, Private, Shopping Or Office Complexes'),
+				t('Overseas Address'),
+				t('Private'),
+				t('Island Address Without Postal Codes'),
+				t('Quarters'),
+				t('Non-Private Or Care-Of Address'),
+				t('Post Office (P. O. Box)')
+			));
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_FLAT_TYPE_QUESTION,
+			array(
+				t('Purchased 1 Room'),
+				t('Purchased 2 Rooms'),
+				t('Purchased 3 Rooms'),
+				t('Purchased 4 Rooms'),
+				t('Purchased 5 Rooms'),
+				t('Rented 1 Room'),
+				t('Rented 2 Rooms'),
+				t('Rented 3 Rooms'),
+				t('Seniors\' Studio Apartment'),
+				t('Executive Flat')
+			));
+
+		//NOK form
+		cvwocodem2_registerquestion(namespace\MODULE_NAME,
+			namespace\PERSONAL_PARTICULARS_NOK_RELATIONSHIP_QUESTION,
+			array(
+				t('Husband'),
+				t('Wife'),
+				t('Father'),
+				t('Mother'),
+				t('Son'),
+				t('Daughter'),
+				t('Brother'),
+				t('Sister'),
+				t('Grandson'),
+				t('Granddaughter'),
+				t('Nephew'),
+				t('Niece'),
+				t('Uncle'),
+				t('Aunt'),
+				t('Cousin'),
+				t('In-Laws'),
+				t('Other Relative'),
+				t('Roommate'),
+				t('Neighbour'),
+				t('Friend'),
+				t('Social Worker'),
+				t('Others')
+			));
+	}
+
+	function person_schema(&$schema)
+	{
+		$schema[CVWO_PERSON_TABLE] = array(
+			'description'	 => t('This table stores the personal information of all types of people, like client, volunteer and staff.'),
+			'fields'		 => array(
+				'person_id'			 => array(
+					'type'			 => 'serial',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('Auto-generated id for each record.')
+				),
+				'uid' => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('Drupal {users}.uid for this person.'),
+					'default'		 => null
+				),
+				'nric_fin'			 => array(
+					'type'			 => 'varchar',
+					'length'		 => 32,
+					'unique'		 => true,
+					'description'	 => t('The NRIC or FIN of the person.')
+				),
+				'nric_colour'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The colour of the NRIC or FIN.')
+				),
+				'salutation'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('Mr, Mrs, Miss, Dr and so on.')
+				),
+				'name'				 => array(
+					'type'			 => 'varchar',
+					'length'		 => 255,
+					'description'	 => t('The first name of the person.')
+				),
+				'traditional_name'	 => array(
+					'type'			 => 'varchar',
+					'length'		 => 255,
+					'description'	 => t('The traditional name of the person, if applicable.')
+				),
+				'gender'			 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('Male or female')
+				),
+				'date_of_birth'		 => array(
+					'type'			 => 'datetime',
+					'mysql_type'	 => 'datetime',
+					'description'	 => t('The date of birth of the person.')
+				),
+				'place_of_birth'	 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The place of birth of the person.')
+				),
+				'nationality'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The nationality of the person.')
+				),
+				'religion'			 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The religion of the person.')
+				),
+				'marital_status'	 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The marital status of the person.')
+				),
+				'race'				 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The race of the person.')
+				),
+				'ethnicity'			 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The ethnicity of the person.')
+				),
+				'highest_edu_level'	 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The education level of the person.')
+				),
+				'occupation'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The occupation of the person.')
+				),
+				'occupation_status'	 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The occupation status of the person, whether employed, unemployed, student etc.')
+				),
+				'photograph'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The ID of the photograph of the person. This is a Drupal File management ID.')
+				),
+
+
+				/*'centre_id'			 => array(
+					'type'			 => 'varchar',
+					'length'		 => '100',
+					'description'	 => t('The centre which the person belongs to.')
+				),
+				'region'			 => array(
+					'type'			 => 'varchar',
+					'length'		 => '16',
+					'description'	 => t('The region the person is in')
+				),
+				'person_deleted'	 => array(
+					'type'			 => 'int',
+					'size'			 => 'tiny',
+					'default'		 => 0,
+					'description'	 => t('')
+				),
+				'constituency'		 => array(
+					'type'			 => 'varchar',
+					'length'		 => '100',
+					'description'	 => t('')
+				),
+				'cdc'				 => array(
+					'type'			 => 'varchar',
+					'length'		 => '100',
+					'description'	 => t('')
+				),
+				'grc_smc'			 => array(
+					'type'			 => 'varchar',
+					'length'		 => '100',
+					'description'	 => t('')
+				),
+				'division'			 => array(
+					'type'			 => 'varchar',
+					'length'		 => '100',
+					'description'	 => t('')
+				),*/
+			),
+			'primary key'			 => array('person_id'),
+			'unique keys'			 => array(
+				'uid'				 => array('uid'),
+			),
+			'foreign keys'			 => array(
+				'drupal_uid_relation'	 => array(
+					'table'				 => 'users',
+					'uid'				 => 'uid'
+				)
+			),
+			'indexes' => array(
+				'nric_fin'			 => array('nric_fin', 'is_deleted'),
+				'name'				 => array('name'),
+				'traditional_name'	 => array('traditional_name')
+
+				/*,
+				'centre_id'			 => array('centre_id'),
+				'region'			 => array('region'),
+				'occupation'		 => array('occupation'),*/
+			),
+		);
+		db\table_include_soft_delete($schema[CVWO_PERSON_TABLE]);
+		db\table_include_timestamps($schema[CVWO_PERSON_TABLE]);
+
+		$schema[CVWO_PERSON_CONTACT_TABLE] = array(
+			'description'	 => t('Stores the contacts of a person.'),
+			'fields'		 => array(
+				'contact_id'	 => array(
+					'type'			 => 'serial',
+					'not null'		 => true,
+					'unsigned'		 => true,
+					'description'	 => t('The primary key.'),
+				),
+				'person_id'		 => array(
+					'type'			 => 'int',
+					'not null'		 => true,
+					'unsigned'		 => true,
+					'description'	 => t('The person_id in the cvwo_person table.'),
+				),
+				'contact_type'	 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The type of contact number (mobile, home, work etc.)'),
+				),
+				'contact_value'	 => array(
+					'type'			 => 'varchar',
+					'not null'		 => true,
+					'length'		 => '100',
+					'description'	 => t('The value of the contact number.'),
+				)
+			),
+			'primary key'	 => array('contact_id'),
+			'foreign keys'	 => array(
+				'contact_user_relation'	 => array(
+					'table'		 => CVWO_PERSON_TABLE,
+					'person_id'	 => 'person_id'
+				)
+			),
+			'indexes' => array(
+				'person_id' => array('person_id'),
+			),
+		);
+		db\table_include_timestamps($schema[CVWO_PERSON_CONTACT_TABLE]);
+
+		$schema[CVWO_PERSON_LANGUAGE_TABLE] = array(
+			'description'	 => t('Stores the language information of a person.'),
+			'fields'		 => array(
+				'language_id'			 => array(
+					'type'			 => 'serial',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The primary key.')
+				),
+				'person_id'				 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The person_id in cvwo_person table.')
+				),
+				'language'				 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The language being referenced.')
+				),
+				'language_competency'	 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The competency of the person in using the language (read/spoken).')
+				),
+				'language_proficiency'	 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The proficiency of the person in using the language (elementary/intermediate/advanced).')
+				)
+			),
+			'primary key'	 => array('language_id'),
+			'foreign keys'	 => array(
+				'contact_user_relation'	 => array(
+					'table'		 => CVWO_PERSON_TABLE,
+					'person_id'	 => 'person_id'
+				)
+			),
+			'indexes' => array(
+				'person_id' => array('person_id')
+			),
+		);
+		db\table_include_timestamps($schema[CVWO_PERSON_LANGUAGE_TABLE]);
+
+		$schema[namespace\PERSONAL_PARTICULARS_PERSON_ADDRESS_TABLE] = array(
+			'description'	 => t('Links people with their addresses.'),
+			'fields'		 => array(
+				'person_address_id'		 => array(
+					'type'			 => 'serial',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The primary key.')
+				),
+				'address_id'			 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The address_id in the cvwo_address table.')
+				),
+				'person_id'				 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The person_id in cvwo_person table.')
+				)
+			),
+			'primary key'	 => array(
+				'person_address_id'
+			),
+			'foreign keys'	 => array(
+				'address_relation'	 => array(
+					'table'			 => CVWO_ADDRESS_TABLE,
+					'address_id'	 => 'address_id'
+				),
+				'person_relation'	 => array(
+					'table'			 => CVWO_PERSON_TABLE,
+					'person_id'		 => 'person_id'
+				)
+			),
+			'indexes'		 => array(
+				'address_id_index'		 => array('address_id'),
+				'person_id_index'		 => array('person_id'),
+				'person_address_index'	 => array('person_id', 'address_id')
+			)
+		);
+
+		$schema[namespace\PERSONAL_PARTICULARS_PERSON_NOK_TABLE] = array(
+			'description'	 => t('Stores the NOK information of a person.'),
+			'fields'		 => array(
+				'person_nok_id'		 => array(
+					'type'			 => 'serial',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The primary key.')
+				),
+				'person_id'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The person_id we are referring to.')
+				),
+				'nok_id'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The NOK of the person_id we are referring to.')
+				),
+				'primary_nok'	 => array(
+					'type'			 => 'int',
+					'size'			 => 'tiny',
+					'not null'		 => true,
+					'default'		 => 0,
+					'description'	 => t('Non-zero for a primary next-of-kin.')
+				),
+				'relationship'	 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('Relationship of the NOK to client. CodeM value.')
+				),
+
+				/*
+				'net_income'	 => array(
+					'type'			 => 'varchar',
+					'length'		 => 10,
+					'description'	 => 'NOK\'s net income.',
+				),*/
+			),
+			'primary key'	 => array('person_nok_id'),
+			'unique keys'	 => array(
+				'person_nok'		 => array(
+					'person_id',
+					'nok_id'
+				)
+			),
+			'indexes'		 => array(
+				'person_id'			 => array('person_id'),
+				'nok_id'			 => array('nok_id')
+			),
+			'foreign keys'	 => array(
+				'person_relation'	 => array(
+					'table'		 => CVWO_PERSON_TABLE,
+					'person_id'	 => 'person_id'
+				),
+				'nok_relation'		 => array(
+					'table'		 => CVWO_PERSON_TABLE,
+					'nok_id'	 => 'person_id'
+				)
+			)
+		);
+	}
+}

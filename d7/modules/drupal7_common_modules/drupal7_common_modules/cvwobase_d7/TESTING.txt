@@ -1,0 +1,26 @@
+AUTHOR: Patrick Tan
+PERSON IN CHARGE: Patrick
+LAST MODIFIED: 22 May 2010
+
+Test procedure:
+1) Create NUMRECORDS (100) audit entries with the following data:
+  - A random message of length between 1 to MAXLOGLEN (50)
+  - Either TAG1 or TAG2 (both random strings)
+  - Either CVWOBASE_MODULE or OTHERMOD (user)
+  - Either user 1 or user 2
+2) Tests filtering via the UI
+  - Only user 2
+  - Only TAG1
+  - Only CVWOBASE_MODULE
+  - Only TAG1 and CVWOBASE_MODULE
+  - Only user 2 and TAG1
+3) Test pagination
+  - Maintain the last filter (Only user 2 and TAG1)
+  - Set pagination limit to one-sixth of the current number of displayed records
+  - Test each page to see if (only) expected records are present
+4) Test deleting
+  - Clear all filters and pagination limits
+  - Test deleting one record ($del_test[0], randomly chosen)
+  - Test deleting a random number of records between 2 and sqrt(NUMRECORDS)
+  - Test deleting all the remaining records
+  - After each delete operation, scan the page to see if only the remaining records are present

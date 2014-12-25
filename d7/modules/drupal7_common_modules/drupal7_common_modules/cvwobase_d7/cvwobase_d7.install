@@ -1,0 +1,456 @@
+<?php
+/*
+ * The MIT License
+ *
+ * Copyright 2011-2013 Computing for Volunteer Welfare Organizations (CVWO),
+ * National University of Singapore.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+/**
+ * @file
+ * Schema and requirement definitions for the cvwobase_d7 module.
+ */
+
+namespace {
+	use \CVWO\Base as Base;
+	use \CVWO\Base\Database as db;
+
+	drupal_load('module', 'cvwocodem2');
+	require_once drupal_get_path('module', 'cvwobase_d7').'/cvwobase_d7_constants.php';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_api.php';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_db_api2.php';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_person.install';
+	require_once drupal_get_path('module', Base\MODULE_NAME) . '/cvwobase_d7_organisation.install';
+
+/**
+ * Implements hook_install().
+ */
+function cvwobase_d7_install() {
+
+	variable_set(CVWOBASE_D7_PHP_BINARY, $path = findPHPbinary());
+	$msg_args = array('%binary' => $path, '@config' => url('admin/config/cvwo/cvwobase'));
+	if ($path === FALSE)
+		drupal_set_message(t('The PHP binary was not found in the system PATH variable. Please set its location manually in <a href="@config">the settings page for cvwobase</a>.', $msg_args), 'warning');
+	else
+		drupal_set_message(t('The PHP binary was found to be %binary. Please change its location in <a href="@config">the settings page</a> if necessary.', $msg_args));
+
+	if (!variable_get('file_private_path', FALSE)) {
+		$dir = variable_get('file_public_path', conf_path() . '/files') . '/private';
+		$msg_args = array(
+			'%directory' => $dir,
+			'@conf-url' => url('admin/config/media/file-system')
+		);
+		if (!is_dir($dir) && !drupal_mkdir($dir, NULL, TRUE))
+			drupal_set_message(t('The directory %directory does not exist and could not be created. Please set the Private file system path <a href="@conf-url">here</a>.', $msg_args), 'error');
+		elseif (is_dir($dir) && !is_writable($dir) && !drupal_chmod($dir))
+			drupal_set_message(t('The directory %directory exists but is not writable and could not be made writable. Please set the Private file system path <a href="@conf-url">here</a>.', $msg_args), 'error');
+		else {
+			file_create_htaccess($dir);
+			variable_set('file_private_path', $dir);
+			drupal_set_message(t('The directory %directory has been set as the Private file system path. You may change the Private file system path <a href="@conf-url">here</a>.', $msg_args));
+		}
+	}
+
+	$PAGELIMIT_OPTIONS = array('10' => '10', '20' => '20', '50' => '50',
+		'100' => '100', '500' => '500', '1000' => '1000');
+	cvwocodem2_registerquestion(Base\MODULE_NAME, PAGELIMIT_CVWOBASE, $PAGELIMIT_OPTIONS);
+	
+	Base\person_install();
+	Base\organisation_install();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function cvwobase_d7_uninstall() {
+	Base\person_uninstall();
+	Base\organisation_uninstall();
+
+	cvwocodem2_delquestions(Base\MODULE_NAME);
+
+	variable_del(CVWOBASE_D7_PHP_BINARY);
+	variable_del(CVWOBASE_D7_MAIL_HOST);
+	variable_del(CVWOBASE_D7_MAIL_USER);
+	variable_del(CVWOBASE_D7_MAIL_PASS);
+	variable_del(CVWOBASE_D7_MAIL_PORT);
+}
+
+
+/**
+ * Implements hook_schema().
+ */
+function cvwobase_d7_schema() {
+	$schema[CVWO_AUDIT_TABLE] = array(
+		'description' => 'Stores actions of users.',
+		'fields' => array(
+			'id' => array(
+				'type' => 'serial',
+		'size' => 'big',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Unique event ID.'
+			),
+			
+			'uid' => array(
+				'type' => 'int',
+				'unsigned' => TRUE,
+			'not null' => TRUE,
+				'description' => 'User id.'
+			),
+			
+			'tag' => array(
+				'type' => 'varchar',
+				'length' => 128,
+				'default' => '',
+				'not null' => TRUE,
+				'description' => 'Tag of log message.'
+			),
+			
+			'timestamp' => array(
+			'type' => 'int',
+				'size' => 'big',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Record timestamp of when event occurred.'
+			),
+			
+			'message' => array (
+				'type' => 'text',
+				'size' => 'big',
+				'not null' => TRUE,
+				'description' => 'Text of log message to be passed into the t() function.'
+			),
+	  
+	  'variables' => array(
+		'type' => 'blob',
+		'size' => 'big',
+		'not null' => TRUE,
+		'serialize' => TRUE,
+		'description' => 'Serialized array of variables that match the message string and that is passed into the t() function.'
+	  ),
+			
+			'module_name' => array(
+				'type' => 'varchar',
+				'length' => 128,
+				'default' => '',
+				'not null' => TRUE,
+				'description' => 'Module where change was made.'
+			),
+			
+			'referrer' => array(
+				'type' => 'varchar',
+				'length' => 1000,
+				'not null' => TRUE,
+				'default' => '',
+				'description' => 'URL of referring page.'
+			),
+			
+			'host_name' => array(
+				'type' => 'varchar',
+				'length' => 128,
+				'not null' => TRUE,
+				'default' => '',
+				'description' => 'Hostname of the user who triggered the event.'
+			),
+			
+		),
+		
+		'primary key' => array('id'),
+		'indexes' => array(
+			'list' => array('module_name', 'tag', 'timestamp')
+		)
+	);	
+	
+	$schema[CVWO_ADDRESS_TABLE] = array(
+		'description'	 => t('Stores all addresses'),
+		'fields'		 => array(
+			'address_id'	 => array(
+				'type'			 => 'serial',
+				'unsigned'		 => true,
+				'not null'		 => true,
+				'description'	 => t('The primary key.'),
+			),
+			'blk_no'		 => array(
+				'type'			 => 'varchar',
+				'length'		 => 16,
+				'description'	 => t('The block number of the address.'),
+			),
+			'street_name'	 => array(
+				'type'			 => 'varchar',
+				'length'		 => 255,
+				'description'	 => t('The street name of the address.'),
+			),
+			'building_name'	 => array(
+				'type'			 => 'varchar',
+				'length'		 => 255,
+				'description'	 => t('The building name of the address.'),
+			),
+			'floor_no'		 => array(
+				'type'			 => 'varchar',
+				'length'		 => 5,
+				'description'	 => t('The floor number of the address.'),
+			),
+			'unit_no'		 => array(
+				'type'			 => 'varchar',
+				'length'		 => 16,
+				'description'	 => t('The unit number of the address.'),
+			),
+			'postal_code'	 => array(
+				'type'			 => 'char',
+				'length'		 => 6,
+				'description'	 => t('The postal code of the address.'),
+			),
+			'flat_type'		 => array(
+				'type'			 => 'int',
+				'unsigned'		 => true,
+				'description'	 => t('Purchased/Rent a x-room flat.'),
+			)
+		),
+		'primary key'	 => array('address_id'),
+		'indexes' => array(
+			'postal_code'	 => array('postal_code')
+		)
+	);
+	db\table_include_timestamps($schema[CVWO_ADDRESS_TABLE]);
+
+	$schema[CVWO_CENTRE_TABLE] = array(
+		'description' => 'This table contains all the centres that are involved',
+		'fields' => array(
+			'centre_id' => array(
+				'type' => 'serial',
+				'size' => 'big',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Unique id of the centre',
+			),
+			'centre_name' => array(
+				'type' => 'varchar',
+				'length' => 64,
+				'not null' => TRUE,
+				'description' => 'Name of the centre',
+			),
+			'abbreviation' => array(
+				'type' => 'varchar',
+				'length' => 32,
+				'description' => 'Short form of centre name to be displayed usually',
+			),
+			'centre_type' => array(
+				'type' => 'varchar',
+				'length' => 64,
+				'description' => 'Centre type, to be specified by project that is implementing it',
+			),
+			'contact_person_id' => array(
+				'type' => 'int',
+				'size' => 'big',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+				'description' => 'Person in charge of contacts for this centre',
+			),
+			'centre_phone_no' => array(
+				'type' => 'varchar',
+				'length' => 64,
+				'description' => 'Phone number of centre',
+			),
+			'centre_fax_no' => array(
+				'type' => 'varchar',
+				'length' => 64,
+				'description' => 'Fax number of centre',
+			),
+			'centre_email' => array(
+				'type' => 'varchar',
+				'length' => 128,
+				'description' => 'Email of centre',
+			),
+			'status' => array(
+				'type' => 'int',
+				'size' => 'tiny',
+				'default' => STATUS_ENABLED,
+				'not null' => TRUE,
+				'description' => STATUS_ENABLED.' for enabled, '.STATUS_DISABLED.' for disabled.',
+			),
+			'data' => array(
+				'type' => 'blob',
+				'size' => 'normal',
+				'serialize' => TRUE,
+				'description' => 'Any additional data for centres',
+			)
+		),
+		'primary key' => array('centre_id'),
+		'indexes' => array(
+			'centre_name' => array('centre_name'),
+			'abbreviation' => array('abbreviation'),
+			'status' => array('status'),
+		),
+	);
+	db\table_include_timestamps($schema[CVWO_CENTRE_TABLE]);
+	
+	$schema[CVWO_LOCATION_TABLE] = array(
+		'description' => 'This table contains all the locations in centres',
+		'fields' => array(
+			'location_id' => array(
+				'type' => 'serial',
+				'size' => 'big',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Unique location id',
+			),
+			'location_name' => array(
+				'type' => 'varchar',
+				'length' => 64,
+				'not null' => TRUE,
+				'description' => 'Name of location',
+			),
+			'location_capacity' => array(
+				'type' => 'int',
+				'size' => 'big',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+				'description' => 'Capacity of the location',
+			),
+			'centre_id' => array(
+				'type' => 'int',
+				'size' => 'big',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+				'description' => 'Centre_id of centre that location is in',
+			),
+			'centre_address_id' => array(
+				'type' => 'int',
+				'size' => 'big',
+				'default' => 0,
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'A centre can have multiple addresses, so this address is the one that the location follows',
+			),
+			'floor_no' => array(
+				'type' => 'varchar',
+				'length' => 5,
+				'description' => 'Floor number of address',
+			),
+			'unit_no' => array(
+				'type' => 'varchar',
+				'length' => 16,
+				'description' => 'Unit number of address',
+			),
+			'room_no' => array(
+				'type' => 'varchar',
+				'length' => 8,
+				'description' => 'Room no. of location',
+			),			
+			'status' => array(
+				'type' => 'int',
+				'size' => 'tiny',
+				'default' => STATUS_ENABLED,
+				'not null' => TRUE,
+				'description' => STATUS_ENABLED.' for enabled, '.STATUS_DISABLED.' for disabled.',
+			)
+		),
+		'primary key' => array('location_id'),
+		'indexes' => array(
+			'location_name' => array('location_name'),
+			'centre_id' => array('centre_id'),
+			'centre_address_id' => array('centre_address_id'),
+			'status' => array('status'),
+		),
+	);
+	db\table_include_timestamps($schema[CVWO_LOCATION_TABLE]);
+
+	Base\person_schema($schema);
+	Base\organisation_schema($schema);
+
+	return $schema;
+}
+
+/**
+ * Implements hook_enable().
+ */
+function cvwobase_d7_enable() {
+  $configuration = variable_get('mail_system', array('default-system' => 'DefaultMailSystem'));
+  $configuration['default-system'] = 'CvwoMailSystem';
+  variable_set('mail_system', $configuration);
+}
+
+/**
+ * Implements hook_disable().
+ */
+function cvwobase_d7_disable() {
+  $configuration = variable_get('mail_system', array('default-system' => 'DefaultMailSystem'));
+  $configuration['default-system'] = 'DefaultMailSystem';
+  variable_set('mail_system', $configuration);
+}
+
+/**
+ * Implements hook_update_last_removed. We won't update anything from less than
+ * Drupal 7.
+ */
+function cvwobase_d7_update_last_removed() {
+	return 7000;
+}
+
+/**
+ * Updates the schema to the 7.x-2.x version of cvwobase_d7.
+ *
+ * Differences with the original D7 Person table:
+ *  - All CodeM fields replaced to reference answer-IDs instead.
+ *  - First Name + Last Name = Name
+ *  - Chinese Name = Traditional Name
+ *  - Education = Highest Edu Level
+ *  - Occupation changed to CodeM
+ * 
+ * Differences with the original D7 Address table:
+ *  - Now tracks modified date and created date/user who did it
+ *  - No longer links to user/org/centre/location. Make your own link table
+ *    with one column containing ID of thing you're linking to, other column
+ *    with ID from this table.
+ *  - CodeM values store answer IDs instead
+ *
+ * Differences with the original D7 Person Contact table:
+ *  - home_no, office_no, fax, mobile, email fields remove. Not uses CodeM
+ *    as the contact type.
+ * 
+ * Differences with the original D7 Person Language table:
+ *  - All fields for CodeM now store answer ID.
+ *  - Language type = Language competency
+ *  - Language level = Language proficiency
+ *  - Now tracks modified date and created date/user who did it
+ *
+ * Addition of the Person Address table
+ *  - Foreign Key 1: Person ID
+ *  - Foreign Key 2: Address ID
+ *  - This script will (have to) pull the values from the old D7 Address table
+ *    to this table before altering the schema
+ *
+ * Addition of the Organisation Address table
+ *  - Ditto.
+ * Addition of the Centre Address table
+ *  - Ditto.
+ * Addition of the Location Addres table
+ *  - Ditto.
+ *
+ * @todo: Write this update script, please.
+ */
+function cvwobase_d7_update_7200(&$sandbox) {
+
+}
+}

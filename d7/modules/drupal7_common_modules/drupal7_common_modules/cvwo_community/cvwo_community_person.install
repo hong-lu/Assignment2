@@ -1,0 +1,307 @@
+<?php
+/*
+ * The MIT License
+ *
+ * Copyright 2013 Computing for Volunteer Welfare Organizations (CVWO),
+ * National University of Singapore.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+namespace CVWO\Community {
+	use \CVWO\Base\Database as db;
+
+	function person_install_codem()
+	{
+		//Community Person extra form fields.
+		cvwocodem2_registerquestion(MODULE_NAME,
+			PERSON_LIVING_PATTERN_QUESTION,
+			array(
+				t('Alone'),
+				t('Sharing Flat'),
+				t('With Spouse'),
+				t('With Sibling(s)'),
+				t('With Child(ren)'),
+				t('With Grandchild(ren)'),
+				t('With Parent(s)'),
+				t('With Relative(s)'),
+				t('With Family'),
+				t('With Maid'),
+				t('With (Ex-)employer'),
+				t('With Friend(s)'),
+				t('In Institution'),
+				t('Others')
+			));
+		cvwocodem2_registerquestion(MODULE_NAME,
+			PERSON_FINANCIAL_SITUATION_QUESTION,
+			array(
+				t('Working'),
+				t('Own Savings'),
+				t('On Pension'),
+				t('Family Support'),
+				t('Relative Support'),
+				t('Friends\' Support'),
+				t('CPF'),
+				t('Financial Assistance'),
+				t('CHAS'),
+				t('Groceries')
+			));
+		cvwocodem2_registerquestion(MODULE_NAME,
+			PERSON_AT_RISK_QUESTION,
+			array(
+				t('Yes'),
+				t('No')
+			));
+		cvwocodem2_registerquestion(MODULE_NAME,
+			PERSON_OTHER_HEALTH_CONDITION_QUESTION,
+			array(
+				t('Needs reading glasses'),
+				t('Needs hearing aid'),
+				t('Anaemic'),
+				t('Arthitis (Rheumatism)'),
+				t('Asthma'),
+				t('Cancer'),
+				t('Cataracts/Glaucoma'),
+				t('Cholestrol'),
+				t('Diabetes'),
+				t('Dementia'),
+				PERSON_OTHER_HEALTH_CONDITION_FRAIL => t('Frail'),
+				t('Heart disease'),
+				t('Hepatitis'),
+				PERSON_OTHER_HEALTH_CONDITION_HOMEBOUND => t('Homebound'),
+				t('Hypertension'),
+				t('Kidney'),
+				t('Lung disease'),
+				t('Stroke'),
+				t('Thyroid')
+			));
+		cvwocodem2_registerquestion(MODULE_NAME,
+			PERSON_MOVEMENT_ABILITY_QUESTION,
+			array(
+				t('Ambulant'),
+				t('Semi-ambulant'),
+				t('Non-ambulant'),
+				t('Vulnerable'),
+				t('Bedridden'),
+				t('Wheelchair-bound')
+			));
+	}
+
+	function person_build_schema(&$schema)
+	{
+		$schema[PERSON_TABLE] = array(
+			'description'	 => t('Augments the abstract CVWO person to include living patterns, movement ability etc.'),
+			'fields'		 => array(
+				'person_id'				 => array(
+					'type'			 => 'int',
+					'not null'		 => true,
+					'unsigned'		 => true,
+					'description'	 => t('This corresponds to the abstract CVWO Person\'s person_id'),
+				),
+				'living_pattern'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The person\'s living pattern'),
+				),
+				'movement_ability'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('The person\'s movement ability'),
+				)
+			),
+			'primary key'	 => array('person_id'),
+			'indexes'		 => array(
+			),
+			'foreign keys'	 => array(
+				'community_person_person_relation' => array(
+					'table'		 => \CVWO\Base\PERSON_TABLE,
+					'person_id'	 => 'person_id'
+				)
+			)
+		);
+		db\table_include_soft_delete($schema[PERSON_TABLE]);
+		db\table_include_timestamps($schema[PERSON_TABLE]);
+
+		$schema[PERSON_AT_RISK_TABLE] = array(
+			'description'	 => t('At Risk table for Community Persons. Because we need to maintain history information about whether the person is At Risk. This adds the time dimension to the PERSON_TABLE\'s at_risk column.'),
+			'fields'		 => array(
+				'status_id'		 => array(
+					'type'			 => 'serial',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The primary key.')
+				),
+				'person_id'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('This corresponds to the PERSON_TABLE\'s person_id')
+				),
+				'at_risk'		 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'description'	 => t('Whether the person is at risk. This is nullable and a CodeM because old entries were not required to specify this.'),
+				),
+			),
+			'primary key'	 => array('status_id'),
+			'foreign keys'	 => array(
+				'person_relation'	 => array(
+					'table'			 => PERSON_TABLE,
+					'person_id'		 => 'person_id'
+				)
+			)
+		);
+		db\table_make_incremental($schema[PERSON_AT_RISK_TABLE], array('person_id'));
+
+		$schema[PERSON_FINANCIAL_SITUATION_TABLE] = array(
+			'description'	 => t('Augments the Community Person to determine the financial situation of the person. This allows the financial situation of the person to be stored as a set of flags.'),
+			'fields'		 => array(
+				'person_financial_situation_id'	 => array(
+					'type'			 => 'serial',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The primary key.')
+				),
+				'person_id'						 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('This corresponds to the Communty Person\'s person_id')
+				),
+				'status'						 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The financial status of the person.')
+				)
+			),
+			'primary key'	 => array('person_financial_situation_id'),
+			'indexes'		 => array(
+				'person_index' => array('person_id')
+			),
+			'unique keys'	 => array(
+				'person_status' => array(
+					'person_id',
+					'status'
+				)
+			),
+			'foreign keys'	 => array(
+				'financial_situation_person_relation' => array(
+					'table'		 => PERSON_TABLE,
+					'person_id'	 => 'person_id'
+				)
+			)
+		);
+
+		$schema[PERSON_OTHER_HEALTH_CONDITION_TABLE] = array(
+			'description'	 => t('Augments the Community Person to determine the health condition of the person. This allows the health condition of the person to be stored as a set of flags.'),
+			'fields'		 => array(
+				'person_health_condition_id'	 => array(
+					'type'			 => 'serial',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The primary key.')
+				),
+				'person_id'						 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('This corresponds to the Communty Person\'s person_id')
+				),
+				'status'						 => array(
+					'type'			 => 'int',
+					'unsigned'		 => true,
+					'not null'		 => true,
+					'description'	 => t('The health condition of the person.')
+				)
+			),
+			'primary key'	 => array('person_health_condition_id'),
+			'indexes'		 => array(
+				'person_index' => array('person_id')
+			),
+			'unique keys'	 => array(
+				'person_status' => array(
+					'person_id',
+					'status'
+				)
+			),
+			'foreign keys'	 => array(
+				'health_condition_person_relation' => array(
+					'table'		 => PERSON_TABLE,
+					'person_id'	 => 'person_id'
+				)
+			)
+		);
+	}
+	
+	/**
+	 * Updates the database schema to version 7101.
+	 */
+	function person_update_7101()
+	{
+		//Clean the old data first.
+		$remove_dupes = function($table_name, $primary_key) {
+			$subquery = db_select($table_name)
+				->fields($table_name, array('person_id', 'status'));
+			$subquery->addExpression('COUNT(person_id)', 'c');
+			$subquery->groupBy('person_id');
+			$subquery->groupBy('status');
+			$query = db_select($subquery, 's')
+				->fields('s')
+				->condition('c', 1, '>')
+				->execute();
+			while (($row = $query->fetchAssoc()) !== false)
+			{
+				db_delete($table_name)
+					->condition($primary_key, db_select($table_name)
+						->fields($table_name, array($primary_key))
+						->condition('person_id', $row['person_id'])
+						->condition('status', $row['status'])
+						->range(1, 0x7FFFFFF)
+						->execute()
+						->fetchCol(0))
+					->execute();
+			}
+		};
+		$remove_dupes(PERSON_FINANCIAL_SITUATION_TABLE, 'person_financial_situation_id');
+		$remove_dupes(PERSON_OTHER_HEALTH_CONDITION_TABLE, 'person_health_condition_id');
+
+		//Remove NULLs, because the table will be non-null soon.
+		$remove_nulls = function($table_name) {
+			db_delete($table_name)
+				->condition('status', null)
+				->execute();
+		};
+		$remove_nulls(PERSON_FINANCIAL_SITUATION_TABLE);
+		$remove_nulls(PERSON_OTHER_HEALTH_CONDITION_TABLE);
+
+		//Then change the database definition.
+		$schema = array();
+		person_build_schema($schema);
+		\db_change_field(PERSON_FINANCIAL_SITUATION_TABLE, 'status', 'status',
+			$schema[PERSON_FINANCIAL_SITUATION_TABLE]['fields']['status']);
+		\db_add_unique_key(PERSON_FINANCIAL_SITUATION_TABLE, 'person_status',
+			array('person_id', 'status'));
+
+		\db_change_field(PERSON_OTHER_HEALTH_CONDITION_TABLE, 'status', 'status',
+			$schema[PERSON_OTHER_HEALTH_CONDITION_TABLE]['fields']['status']);
+		\db_add_unique_key(PERSON_OTHER_HEALTH_CONDITION_TABLE, 'person_status',
+			array('person_id', 'status'));
+	}
+}

@@ -1,0 +1,215 @@
+<?php
+// $Id$
+/*
+  Copyright (c) 2011-2012 Computing for Volunteer Welfare Organizations (CVWO)
+  National University of Singapore
+  Permission is hereby granted, free of charge, to any person obtainin a copy of this software and associated documentation
+  files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,
+  modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
+  Software is furnished to do so, subject to the following conditions:
+   
+  1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+  Software.
+   
+  2. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+namespace {
+	use \CVWO\HelloWorld as HelloWorld;
+
+	/**
+	 * @file
+	 * A module to teach about Drupal coding practices
+	 */
+
+	require_once drupal_get_path('module', 'helloworld_d7').'/helloworld_d7_constants.php';
+	require_once drupal_get_path("module", HelloWorld\MODULE_NAME)."/helloworld_d7_api.inc";
+
+
+	/**
+	 * Implements hook_help()
+	 *
+	 * Remember to enable the Help module
+	 */
+	function helloworld_d7_help($path, $arg) {
+		if ($path === 'admin/help#' . HelloWorld\MODULE_NAME) { // you can see this at admin/help/helloworld_d7
+			return '<p>' . t('Helloworld Help Page') . '<p>';
+		}
+	}
+
+	/**
+	 * Implements hook_permission()
+	 */
+	function helloworld_d7_permission() {
+		return array(
+			HelloWorld\SETTINGS_ADMIN_PERM => array(
+				'title' => t('Administer Helloworld settings'),
+				'restrict access' => TRUE,
+			),
+			HelloWorld\ADD_USER_PERM => array(
+				'title' => t('Add User Permission'),
+			),
+			HelloWorld\EDIT_USER_PERM => array(
+				'title' => t('Edit User Permission'),
+			),
+			HelloWorld\VIEW_USER_PERM => array(
+				'title' => t('View User Permission'),
+			),
+			HelloWorld\DELETE_USER_PERM => array(
+				'title' => t('Delete User Permission'),
+			),
+			HelloWorld\LIST_USER_PERM => array(
+				'title' => t('List Users Permission'),
+			),
+		); 
+	}
+
+	/**
+	 * Implements hook_theme()
+	 * Registers the themeable functions of a module with Drupal
+	 *
+	 * @ingroup hooks
+	 */ 
+	function helloworld_d7_theme($existing, $type, $theme, $path) {
+		return array(
+			// should be the same name as the function that defines the form
+			'\CVWO\HelloWorld\helloworld_list_form' => array(
+				'render element' => 'form', // Drupal 7 no longer uses arguments
+				'file' => 'helloworld_d7_list.inc',
+			),
+		);
+	}
+	/**
+	 * Implements hook_menu()
+	 */
+	function helloworld_d7_menu () {
+		$items[HelloWorld\MODULE_NAME] = array(
+			'title' => 'Helloworld',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('\CVWO\HelloWorld\helloworld_list_form'),
+			'file' => 'helloworld_d7_list.inc',
+			'access callback' => 'user_access',
+			'access arguments' => array(HelloWorld\LIST_USER_PERM),
+			'type' => MENU_NORMAL_ITEM,
+		);
+		
+		$items[HelloWorld\MODULE_NAME . '/list'] = array(
+			'title' => 'List User Records',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('\CVWO\HelloWorld\helloworld_list_form'),
+			'file' => 'helloworld_d7_list.inc',
+			'access callback' => 'user_access',
+			'access arguments' => array(HelloWorld\LIST_USER_PERM),
+			'weight' => -1,
+			'type' => MENU_DEFAULT_LOCAL_TASK,
+		);
+		
+	  
+		$items[HelloWorld\MODULE_NAME . '/edit/%'] = array(
+			'title' => 'Edit User Record',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('\CVWO\HelloWorld\helloworld_form', 1, 2), 		
+			'file' => 'helloworld_d7_form.inc',
+			'access callback' => 'user_access',
+			'access arguments' => array(HelloWorld\EDIT_USER_PERM),
+			'type' => MENU_CALLBACK,
+		);
+	  
+		$items[HelloWorld\MODULE_NAME . '/view/%'] = array(
+			'title' => 'View User Record',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('\CVWO\HelloWorld\helloworld_form', 1, 2),
+			'file' => 'helloworld_d7_form.inc',		
+			'access callback' => 'user_access',
+			'access arguments' => array(HelloWorld\VIEW_USER_PERM),
+			'type' => MENU_CALLBACK,
+		);	
+		
+		$items[HelloWorld\MODULE_NAME . '/delete/%'] = array(
+			'page callback' => '\CVWO\HelloWorld\delete',
+			'page arguments' => array(2),
+			'file' => 'helloworld_d7_api.inc',
+			'access callback' => 'user_access',
+			'access arguments' => array(HelloWorld\DELETE_USER_PERM),
+			'type' => MENU_CALLBACK,
+		);
+
+        $items[HelloWorld\MODULE_NAME . '/add'] = array(
+			'title' => 'Add User Record',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('\CVWO\HelloWorld\helloworld_form', 1),
+			'file' => 'helloworld_d7_form.inc',
+			'access callback' => 'user_access',
+			'access arguments' => array(HelloWorld\ADD_USER_PERM),
+			'type' => MENU_LOCAL_TASK,
+		);
+        
+		$items[HelloWorld\MODULE_NAME . '/massimport'] = array(
+			'title' => 'Mass Import User Record',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('\CVWO\HelloWorld\helloworld_form', 1),
+			'file' => 'helloworld_d7_form.inc',
+			'access callback' => 'user_access',
+			'access arguments' => array(HelloWorld\ADD_USER_PERM),
+			'type' => MENU_LOCAL_TASK,
+		);
+        
+		$items[HelloWorld\MODULE_NAME . '/name_autocomplete'] = array(
+			'page callback' => '\CVWO\HelloWorld\helloworld_name_autocomplete',
+			'access callback' => TRUE,
+			'file' => 'helloworld_d7_api.inc',
+			'type' => MENU_CALLBACK,
+		);
+		
+		$items['admin/config/cvwo/' . HelloWorld\MODULE_NAME] = array(
+			'title' => 'Helloworld admin settings',
+			'description' => 'Set no. of users displayed in autocomplete/in a single page',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('\CVWO\HelloWorld\helloworld_admin'),
+			'file' => 'helloworld_d7_form.inc',
+			'access callback' => 'user_access',
+			'access arguments' => array(HelloWorld\SETTINGS_ADMIN_PERM),
+			'type' => MENU_NORMAL_ITEM,
+		);
+        
+		return $items;
+	}
+
+	/**
+	 * Implements hook_block_info()
+	 */
+	function helloworld_d7_block_info() {
+		$blocks = array();
+		
+		$blocks['no_of_users_in_system'] = array(
+			'info' => t('Gives the no. of all the users in the Helloworld D7 module'),
+			'cache' => DRUPAL_NO_CACHE,
+		);
+		
+		return $blocks;
+	}
+	 
+	/**
+	 * Implements hook_block_view()
+	 */
+	function helloworld_d7_block_view($block_name = '') {
+		if ($block_name == 'no_of_users_in_system') {
+			$block['subject'] = t('No. of users');
+			$no_of_users = get_no_of_users();
+			
+			// based on how many users there currently are, we output something here
+			if ($no_of_users == 0) {
+				$block['content'] = t('There are no user records. Add <a href="@url">some?</a>', array('@url' => url(HelloWorld\MODULE_NAME . '/add')));
+			} else if ($no_of_users == 1) {
+				$block['content'] = t('There is <a href="@url">%users</a> user record.', array('@url' => url(HelloWorld\MODULE_NAME), '%users' => $no_of_users));
+			} else {
+				// we assume positive
+				$block['content'] = t('There are <a href="@url">%users</a> user records.', array('@url' => url(HelloWorld\MODULE_NAME), '%users' => $no_of_users));
+			}
+			return $block;
+		}
+	}
+}

@@ -1,0 +1,161 @@
+<?php
+
+/*
+ * The MIT License
+ *
+ * Copyright 2013 Computing for Volunteer Welfare Organizations (CVWO),
+ * National University of Singapore.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+namespace CVWO\Community {
+	use \CVWO\Base\Database as db;
+
+	function info_ref_install_codem()
+	{
+		cvwocodem2_registerquestion(MODULE_NAME, INFO_REF_TYPE_QUESTION, array(
+			t('CHAS'),
+			t('Groceries'),
+			t('Counseling'),
+			t('Financial'),
+			t('Home Help'),
+			t('Housing'),
+			t('Medical'),
+			t('Others')
+		));
+		cvwocodem2_registerquestion(MODULE_NAME, INFO_REF_STATUS_QUESTION, array(
+			t('Open'),
+			t('Closed'),
+			t('Pending')
+		));
+		cvwocodem2_registerquestion(MODULE_NAME, INFO_REF_INFO_OR_REF_QUESTION, array(
+			t('Info'),
+			t('Referral'),
+		));
+		cvwocodem2_registerquestion(MODULE_NAME, INFO_REF_FOLLOW_UP_QUESTION, array(
+			t('Yes'),
+			t('No'),
+		));
+	}
+
+	function info_ref_build_schema(&$schema)
+	{
+		$schema[INFO_REF_REPORT_TABLE] = array(
+			'description' => t('Stores Info/Ref information.'),
+			'fields' => array(
+				'info_ref_report_id' => array(
+					'type' => 'serial',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('The primary key.'),
+				),
+				'worker_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('The person who attend this info ref. This is the person_id in cvwo_community_worker')
+				),
+				'person_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('This corresponds to the Community Person\'s person_id'),
+				),
+				'organisation_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('This corresponds to the CVWO Organization Table\'s organisation_id'),
+				),
+				'address_id' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'not null' => true,
+					'description' => t('This corresponds to the CVWO Address Table\'s address_id'),
+				),
+				'date_requested' => array(
+					'type' => 'datetime',
+					'mysql_type' => 'datetime',
+					'not null' => true,
+					'description' => t('Date and time of request'),
+				),
+				'info_ref' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'description' => t('Record whether it is an info or referral.'),
+					'not null' => TRUE,
+				),
+				'type' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'description' => t('The referral type: Counseling, Financial, Housing, Medical or Others.'),
+					'not null' => TRUE,
+				),
+				'follow_up' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'description' => t('Indicate whether this info_referral needs to be followed up or not.'),
+					'not null' => TRUE,
+				),
+				'status' => array(
+					'type' => 'int',
+					'unsigned' => true,
+					'description' => t('The status of the info referral.'),
+					'not null' => TRUE,
+				),
+				'details' => array(
+					'type' => 'text',
+					'size' => 'medium',
+					'description' => t('Info referral details.'),
+				),
+				'action_taken' => array(
+					'type' => 'text',
+					'size' => 'medium',
+					'description' => t('Info referral action taken.'),
+				)
+			),
+			'primary key' => array('info_ref_report_id'),
+			'indexes' => array(
+				'person_id_index' => array('person_id'),
+				'worker_id_index' => array('worker_id'),
+			),
+			'foreign keys' => array(
+				'person_relation' => array(
+					'table' => PERSON_TABLE,
+					'person_id' => 'person_id'
+				),
+				'address_relation' => array(
+					'table' => CVWO_ADDRESS_TABLE,
+					'address_id' => 'address_id'
+				),
+				'worker_relation' => array(
+					'table' => WORKER_TABLE,
+					'worker_id' => 'person_id'
+				),
+				'organisation_relation' => array(
+					'table' => \CVWO\Base\ORGANISATION_TABLE,
+					'organisation_id' => 'organisation_id'
+				),
+			)
+		);
+		db\table_include_soft_delete($schema[INFO_REF_REPORT_TABLE]);
+		db\table_include_timestamps($schema[INFO_REF_REPORT_TABLE]);
+	}
+}

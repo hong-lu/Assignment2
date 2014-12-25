@@ -1,0 +1,6 @@
+CHANGES: Updated all the functionalities to drupal7 platform
+         Also fixed the bug of pager(deleted the self-implemented pager and used the build in default pager instead)
+ENTRY BY/ON: Yu Zhan/2013.05.20
+
+CHANGES: Updated to a commen cvwo module, and also changed its name to cvwodatavalidate_d7.
+ENTRY BY/ON: Yu Zhan/2013.06.18

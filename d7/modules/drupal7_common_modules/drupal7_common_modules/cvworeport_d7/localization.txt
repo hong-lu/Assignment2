@@ -1,0 +1,14 @@
+<?php
+//Feiyue (autocomplete for staff)
+$subquery = cvwo_select('fy_staff', 's');
+$subquery->join('cvwo_person', 'p', 'p.person_id = s.person_id');
+$subquery->condition('s.status', STATUS_ENABLED);
+$subquery->addExpression('CONCAT(first_name, :blank, last_name)', 'name', array(':blank' => ' '));
+$subquery->fields('p', array('nric_fin', 'person_id'));
+
+$results = cvwo_select($subquery, 'sub')
+->condition('name', '%' . $string . '%', 'LIKE')
+->fields('sub', array('nric_fin', 'name', 'person_id'))
+->execute()->fetchAllAssoc('person_id', PDO::FETCH_ASSOC);
+
+return $results;

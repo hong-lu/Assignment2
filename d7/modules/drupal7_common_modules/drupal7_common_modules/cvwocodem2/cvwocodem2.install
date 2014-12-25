@@ -1,0 +1,207 @@
+<?php
+/**
+ * Copyright (c) 2008-2013
+ * Computing for Volunteer Welfare Organizations (CVWO)
+ * National University of Singapore
+ *
+ * Permission is hereby granted, free of charge, to any person obtainin
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject
+ * to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * 2. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+// $Id$
+
+require_once drupal_get_path('module', 'cvwocodem2') . '/cvwocodem2_constants.php';
+require_once drupal_get_path('module', 'cvwocodem2') . '/cvwocodem2_api.inc';
+
+/**
+ * Implementation of hook_install().
+ */
+
+function cvwocodem2_install() {
+  // install_testing_data();
+  if (intval(db_select(CVWOCODEM2_OPTIONS_TABLE)
+      ->condition('aid', 0)
+      ->countQuery()
+      ->execute()
+      ->fetchField()) === 0) {
+    db_insert(CVWOCODEM2_OPTIONS_TABLE)
+      ->fields(array(
+        'qid' => 0,
+        'anstext' => '(reserved default option -- do not use)',
+        'ansval' => 0,
+        'weight' => 0,
+        'disabled' => 0,
+        'defaultopt' => 0,
+        'parent_id' => -1
+	  ))
+    ->execute();
+  }
+}
+
+// function cvwocodem2_uninstall(){
+  //TODO
+  // drupal_uninstall_schema('cvwocodem2');
+  // cvwocodem2_delquestions('cvwocodemtest');
+  // cvwocodem2_delquestions('module2');
+  // variable_del('cvwocodem2_maxdisp');
+// }
+
+// function install_testing_data(){
+
+// }
+
+function cvwocodem2_schema() {
+  //table storing the all the questions
+  $schema[CVWOCODEM2_QUESTIONS_TABLE] = array(
+    'description' => t('Stores all the questions.'),
+    'fields' => array(
+      'qid' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => t('Unique question ID.'),
+  ),
+
+      'module_name' => array(
+            'type' => 'varchar',
+            'length' => 64,
+            'not null' => TRUE,
+            'description' => t('Module name where questions appear.'),
+  ),
+
+      'qnval' => array(
+            'type' => 'varchar',
+            'length' => 255,
+            'not null' => TRUE,
+            'description' => t('Content of the question.'),
+  ),
+
+      'qntext' => array(
+            'type' => 'varchar',
+            'length' => 255,
+        'default' => '',
+            'not null' => TRUE,
+            'description' => t('Content of the question.'),
+  ),
+
+      'date_modified' => array(
+            'type' => 'int',
+            'default' => 0,
+            'not null' => TRUE,
+            'description' => t('Date added.'),
+  ),
+
+  ),
+
+    'primary key' => array('qid'),
+    'indexes' => array(
+    'module_qn'=>array('module_name','qnval'),
+  ),
+
+  );
+
+  //table storing options for each question
+  $schema[CVWOCODEM2_OPTIONS_TABLE] = array(
+    'description' => t('Stores the options for questions.'),
+    'fields' => array(
+        'aid' => array(
+            'type' => 'serial',
+            'size' => 'big',
+            'unsigned' => TRUE,
+            'unique' => TRUE,
+            'not null' => TRUE,
+            'description' => t('ID of each answer option.'),
+  ),
+
+        'qid' => array(
+            'type' => 'int',
+            'size'=>'normal',
+            'unsigned' => TRUE,
+            'not null' => TRUE,
+            'description' => t('Unique question ID.'),
+  ),
+
+        'anstext' => array(
+            'type' => 'varchar',
+            'length' => 255,
+            'not null' => TRUE,
+            'description' => t('Content of answers.'),
+  ),
+
+        'ansval' => array(
+            'type' => 'varchar',
+            'length' => 255,
+            'not null' => TRUE,
+            'description' => t('Content of answer values.'),
+  ),
+
+        'weight'=> array(
+            'type' => 'float',
+            'default' => 0,
+            'not null' => TRUE,
+            'description' => t('Weight of option, for ordering'),
+
+  ),
+
+
+        'date_modified' => array(
+            'type' => 'int',
+            'default' => 0,
+            'not null' => TRUE,
+            'description' => t('Date added.'),
+  ),
+
+        'disabled' => array(
+            'type' => 'int',
+            'size' => 'tiny',
+            'default' => 0,
+            'not null' => TRUE,
+            'description' => t('Option disabled'),
+  ),
+
+        'defaultopt' => array(
+            'type' => 'int',
+            'size' => 'tiny',
+            'default' => 0,
+            'not null' => TRUE,
+            'description' => t('Default option'),
+  ),
+        'parent_id' => array(
+            'type' => 'int',
+            'size' => 'big',
+            'default' => -1,
+            'not null' => TRUE,
+            'description' => t('Parent option id'),
+  ),
+
+  ),
+
+    'primary key' => array('aid'),
+    'indexes' => array(
+        'qid'=>array('qid'),
+        'ansval'=>array('ansval'),
+        'defaultopt'=>array('defaultopt'),
+        'parent_id'=> array('parent_id'),
+  ),
+
+  );
+
+  return $schema;
+}

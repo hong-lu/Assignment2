@@ -1,0 +1,345 @@
+<?php
+/*  
+  
+ Copyright (c) 2011-2012 Computing for Volunteer Welfare Organisations (CVWO)  
+ National University of Singapore  
+ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation  
+ files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,  
+ modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the  
+ Software is furnished to do so, subject to the following conditions:  
+  
+ 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of the  
+ Software.  
+  
+ 2. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE  
+ WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR  
+ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,  
+ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  
+  
+*/ 
+// $Id$
+
+/**
+ * @file
+ * Schema for the cvworeport_d7 module.
+ */
+require_once drupal_get_path("module", 'cvworeport_d7')."/cvworeport_d7_constants.php";
+
+/**
+* Implementation of hook_install
+*/
+function cvworeport_d7_install(){
+	
+	// initialize the "Default" report category
+	$result = cvwo_insert(CVWO_REPORT_CATEGORY_TABLE)
+		->fields(array(
+			'category_id' => CVWO_REPORT_DEFAULT_CATEGORY_ID,
+			'category_name' => 'Default',
+			'weight' => 100,
+			'deletable' => STATUS_DISABLED,
+		))
+		->execute();
+	
+	if ($result) {
+		drupal_set_message('CVWO Report was installed correctly');
+	} else {
+		drupal_set_message('Something went wrong with the installation', 'error');
+	}
+	
+	$access_options = array();
+	$access_options = array(
+		'cvwo_report_default_access' => 'Default Access',
+	);
+	cvwocodem2_registerquestion(CVWOREPORT_MODULE, CVWO_REPORTS_ACCESS_QUESTION, $access_options);
+}
+
+/**
+* Implementation of hook_uninstall
+*/
+function cvworeport_d7_uninstall(){
+}
+
+/**
+* Implementation of hook_schema
+*/
+function cvworeport_d7_schema(){
+
+	$schema[CVWO_REPORT_SETUP_TABLE] = array(
+		'description' => 'Stores the localization information of the report module',
+		'fields' => array(
+			'setup_id' => array(
+				'type' => 'serial',
+				'size' => 'tiny',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'The report_setup id which auto-increments itself.',
+			),
+			'menu_name' => array(
+				'type' => 'varchar',
+				'length' => 64,
+				'not null' => TRUE,
+				'descritpion' => 'The name of the module displayed on the main navigation menu.',
+			),
+			'nric_autocomplete' => array(
+				'type' => 'text',
+				'size' => 'medium',
+				'not null' => TRUE,
+				'description' => 'Autocomplete function returning the nric number of the staff',
+			),
+		),
+		'primary key' => array('setup_id'),
+	);
+	
+	$schema[CVWO_REPORT_CATEGORY_TABLE] = array(
+		'description' => 'Stores the categories of reports',
+		'fields' => array(
+			'category_id' => array(
+				'type' => 'serial',
+				'size' => 'normal',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Unique category ID which auto-increments itself.',
+			),
+			'category_name' => array(
+				'type' => 'varchar',
+				'length' => 255,
+				'not null' => TRUE,
+				'description' => 'Name of the the category',
+			),
+			'weight' => array(
+				'type' => 'int',
+				'size' => 'normal',
+				'not null' => TRUE,
+				'decription' => 'The weight of the category',
+			),
+			'deletable' => array(
+				'type' => 'int',
+				'size' => 'tiny',
+				'not null' => TRUE,
+				'default' => STATUS_ENABLED,
+				'description' => STATUS_ENABLED.' for deletable, '.STATUS_DISABLED.' for not deletable',
+			),
+		),
+		'primary key' => array('category_id'),
+	);
+	$schema[CVWO_REPORT_TABLE] = array(
+		'description' => 'Stores the information of reports',
+		'fields' => array(
+			'report_id' => array(
+				'type' => 'serial',
+				'size' => 'normal',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Unique report ID which auto-increments itself.',
+			),
+			'report_name' => array(
+				'type' => 'varchar',
+				'length' => 255,
+				'not null' => TRUE,
+				'description' => 'Name of the report.',
+			),
+			'weight' => array(
+				'type' => 'int',
+				'size' => 'normal',
+				'not null' => TRUE,
+				'default' => 0,
+				'description' => 'The weight of a particular report, used to sort the report in listing',
+			),
+			'category_id' => array(
+				'type' => 'int',
+				'size' => 'normal',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+				'description' => 'The id of the category of the report, used to group reports into different categories',
+			),
+			'access_function' => array(
+				'type' => 'varchar',
+				'length' => 255,
+				'not null' => TRUE,
+				'default' => '',
+				'description' => 'Function to find out whether a user has access to the report, takes in a report_id',
+			),
+			'description' => array(
+				'type' => 'varchar',
+				'length' => 255,
+				'not null' => TRUE,
+				'default' => '',
+				'description' => 'Description of the report.',
+			),
+			'special' => array(
+				'type' => 'int',
+				'size' => 'tiny',
+				'not null' => TRUE,
+				'default' => STATUS_DISABLED,
+				'description' => STATUS_DISABLED.' means not special; '.STATUS_ENABLED.' means special',
+			),
+			'status' => array(
+				'type' => 'int',
+				'size' => 'tiny',
+				'not null' => TRUE,
+				'default' => STATUS_ENABLED,
+				'description' => STATUS_ENABLED.' means not deleted; '.STATUS_DISABLED.' means deleted',
+			),
+		),
+		
+		'primary key' => array('report_id'),
+		
+		'indexes' => array(
+			'category_id' => array('category_id'),
+			'special' => array('special'),
+			'status' => array('status')
+		),
+	);
+	
+	$schema[CVWO_REPORT_ROLES_TABLE] = array(
+		'description' => 'Binds reports to roles with permissions',
+		'fields' => array(
+			'report_id' => array(
+				'type' => 'int',
+				'size' => 'normal',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Report ID',
+			),
+			'rid' => array(
+				'type' => 'int',
+				'size' => 'normal',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Drupal rid of the role to which the report is attached',
+			),
+			'permission' => array(
+				'type' => 'int',
+				'size' => 'tiny',
+				'not null' => 'true',
+				'description' => 'Permission granted to the role pertaining this report. '.CVWO_REPORT_VIEW_ONLY_PERM.' means display only; '.CVWO_REPORT_VIEW_AND_EDIT_PERM.' means display and edit; '.CVWO_REPORT_VIEW_EDIT_AND_DELETE_PERM.' means display, edit and delete',
+			),
+		),
+		'primary key' => array(
+			'report_id',
+			'rid'
+		),
+		'indexes' => array(
+			'report_id' => array('report_id'),
+			'rid' => array('rid'),
+			'permission' => array('permission')
+		),
+	);
+	
+	$schema[CVWO_REPORT_USERS_TABLE] = array(
+		'description' => 'Binds reports to users with permissions',
+		'fields' => array(
+			'report_id' => array(
+				'type' => 'int',
+				'size' => 'normal',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Report ID',
+			),
+			'uid' => array(
+				'type' => 'int',
+				'size' => 'normal',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Drupal ID of the user to which the report is attached',
+			),
+			'permission' => array(
+				'type' => 'int',
+				'size' => 'tiny',
+				'not null' => 'true',
+				'description' => 'Permission granted to the user pertaining this report. '.CVWO_REPORT_VIEW_ONLY_PERM.' means display only; '.CVWO_REPORT_VIEW_AND_EDIT_PERM.' means display and edit; '.CVWO_REPORT_VIEW_EDIT_AND_DELETE_PERM.' means display, edit and delete',
+			),
+		),
+		'primary key' => array(
+			'report_id',
+			'uid'
+		),
+		'indexes' => array(
+			'report_id' => array('report_id'),
+			'uid' => array('uid'),
+			'permission' => array('permission')
+		),
+	);
+	
+	$schema[CVWO_REPORT_QUERIES_TABLE] = array(
+		'description' => 'Binds queries to reports.',
+		'fields' => array(
+			'report_id' => array(
+				'type' => 'int',
+				'size' => 'normal',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Report ID',
+			),
+			'query_id' => array(
+				'type' => 'int',
+				'size' => 'small',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Query ID',
+			),
+			'query_name' => array(
+				'type' => 'varchar',
+				'length' => 255,
+				'not null' => TRUE,
+				'description' => 'Name of the query.',
+			),
+			'sql_statement' => array(
+				'type' => 'text',
+				'not null' => TRUE,
+				'description' => 'The SQL query.',
+			),
+			'special' => array(
+				'type' => 'int',
+				'size' => 'tiny',
+				'not null' => TRUE,
+				'default' => STATUS_DISABLED,
+				'description' => STATUS_DISABLED.' means not special; '.STATUS_ENABLED.' means special (not sql statement)',
+			),
+		),
+		'primary key' => array(
+			'report_id',
+			'query_id',
+		),
+		'indexes' => array(
+			'report_id' => array('report_id'),
+			'query_id' => array('query_id'),
+			'special' => array('special')
+		),
+	);
+	
+	$schema[CVWO_REPORT_SPECIAL_TABLE] = array(
+		'description' => 'Stores special report text.',
+		'fields' => array(
+			'report_id' => array(
+				'type' => 'int',
+				'size' => 'normal',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'description' => 'Report ID',
+			),
+			'report_text' => array(
+				'type' => 'text',
+				'size' => 'medium',
+				'not null' => TRUE,
+				'description' => 'Report Text',
+			),
+			'drupal' => array(
+				'type' => 'int',
+				'size' => 'tiny',
+				'not null' => TRUE,
+				'default' => STATUS_DISABLED,
+				'description' => STATUS_DISABLED.' means not drupal form; '.STATUS_ENABLED.' means drupal form',
+			),
+		),
+		'primary key' => array(
+			'report_id',
+		),
+		'indexes' => array(
+			'drupal' => array('drupal')
+		),
+	);
+	
+	return $schema;
+}

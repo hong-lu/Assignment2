@@ -1,0 +1,73 @@
+<?php
+/*  
+  
+ Copyright (c) 2011-2012 Computing for Volunteer Welfare Organisations (CVWO)  
+ National University of Singapore  
+ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation  
+ files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,  
+ modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the  
+ Software is furnished to do so, subject to the following conditions:  
+  
+ 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of the  
+ Software.  
+  
+ 2. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE  
+ WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR  
+ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,  
+ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  
+  
+*/ 
+// $Id$
+
+/**
+ * @file
+ * Schema for the cvwocal_d7 module.
+ */
+
+require_once drupal_get_path('module', 'cvwocal_d7').'/cvwocal_d7_constants.php';
+
+/**
+ * Implements hook_schema().
+ */
+function cvwocal_d7_schema() {
+	$schema[CVWOCAL_TYPES_TABLE] = array(
+		'description' => 'Stores calendar item types.',
+		'fields' => array(
+			'name' => array(
+				'type' => 'varchar',
+				'length' => 50,
+	    	'not null' => TRUE,
+				'description' => 'Untranslated name to refer to this type.'
+			),
+			'edit_url' => array(
+				'type' => 'varchar',
+				'length' => 255,
+				'default' => '',
+				'not null' => TRUE,
+				'description' => 'Drupal URL to add or edit events. "./$event_id" will be appended to it when editing.',
+			),
+      'edit_callback' => array(
+        'type' => 'varchar',
+				'length' => 255,
+				'default' => '',
+				'not null' => TRUE,
+				'description' => 'AJAX callback to edit events. Signature should be $callback($event_id, $start, $end, $all_day).',
+      ),
+      'access_callback' => array(
+        'description' => 'The callback which determines the access to the form and edit callbacks. Defaults to user_access.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'access_arguments' => array(
+        'description' => 'A serialized array of arguments for the access callback.',
+        'type' => 'blob',
+        'serialize' => TRUE,
+        'not null' => FALSE,
+      )
+		),
+		'primary key' => array('name')
+	);
+	return $schema;
+}

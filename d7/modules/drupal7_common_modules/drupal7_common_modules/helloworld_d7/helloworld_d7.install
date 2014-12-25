@@ -1,0 +1,97 @@
+<?php
+// $Id$
+/*  
+  
+ Copyright (c) 2011-2012 Computing for Volunteer Welfare Organisations (CVWO)  
+ National University of Singapore  
+ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation  
+ files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy,  
+ modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the  
+ Software is furnished to do so, subject to the following conditions:  
+  
+ 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of the  
+ Software.  
+  
+ 2. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE  
+ WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR  
+ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,  
+ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  
+  
+*/ 
+
+namespace {
+	use \CVWO\HelloWorld as HelloWorld;
+	/**
+	 * @file
+	 * Schema definitions for the helloworld_d7 module.
+	 */
+
+	require_once drupal_get_path('module', 'helloworld_d7').'/helloworld_d7_constants.php';
+	require_once drupal_get_path('module', 'cvwobase_d7').'/cvwobase_d7_constants.php';
+
+	/**
+	 * Implements hook_install
+	 */
+	function helloworld_d7_install() {
+		variable_set(HelloWorld\PAGELIMIT, 10);
+		variable_set(HelloWorld\AUTOCOMPLETELIMIT, 10);
+	}
+	/**
+	 * Implements hook_uninstall
+	 */ 
+	function helloworld_d7_uninstall() {
+		variable_del(HelloWorld\PAGELIMIT);
+		variable_del(HelloWorld\AUTOCOMPLETELIMIT);
+	}
+	 
+	/**
+	 * Implements hook_schema().
+	 */
+	function helloworld_d7_schema() {
+		$schema[HelloWorld\HELLOWORLD_TABLE] = array(
+			'description' => 'Stores user records',
+			'fields' => array(
+				'helloworld_id' => array(
+					'description' => 'The primary identifier for a helloworld row',
+					'type' => 'serial',
+					'size' => 'medium',
+					'not null' => TRUE,
+					'unsigned' => TRUE,
+				),
+				'name' => array(
+					'description' => 'Name of user',
+					'type' => 'varchar',
+					'not null' => TRUE,
+					'default' => '',
+					'length' => '255',
+				),
+				'email' => array(
+					'description' => 'Email of user',
+					'type' => 'varchar',
+					'not null' => TRUE,
+					'default' => '',
+					'length' => '255',
+				),
+				'comment' => array(
+					'description' => 'Comments for user',
+					'type' => 'varchar',
+					'default' => '',
+					'length' => '500',
+				),
+				'status' => array(
+					'description' => 'Whether the user is enabled or not',
+					'type' => 'int',
+					'size' => 'tiny',
+					'not null' => TRUE,
+					'default' => STATUS_ENABLED,
+				),
+			),
+			'primary key' => array('helloworld_id'),
+			'indexes' => array(
+				'name' => array('name'),
+			),
+		);
+		
+		return $schema;
+	}
+}

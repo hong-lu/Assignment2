@@ -1,0 +1,138 @@
+<?php
+/*
+ * The MIT License
+ *
+ * Copyright 2013 Computing for Volunteer Welfare Organizations (CVWO),
+ * National University of Singapore.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+namespace {
+	drupal_load('module', 'cvwobase_d7');
+	require_once drupal_get_path('module', 'cvwo_community') . '/cvwo_community_constants.php';
+
+	use \CVWO\Community as Community;
+
+	require_once drupal_get_path('module', Community\MODULE_NAME) . '/cvwo_community_aas.inc';
+	require_once drupal_get_path('module', Community\MODULE_NAME) . '/cvwo_community_aas_list.inc';
+	require_once drupal_get_path('module', Community\MODULE_NAME) . '/cvwo_community_info_ref.inc';
+	require_once drupal_get_path('module', Community\MODULE_NAME) . '/cvwo_community_info_ref_list.inc';
+	require_once drupal_get_path('module', Community\MODULE_NAME) . '/cvwo_community_home_visit.inc';
+	require_once drupal_get_path('module', Community\MODULE_NAME) . '/cvwo_community_home_visit_list.inc';
+
+	/**
+	 * Implements hook_menu
+	 */
+	function cvwo_community_menu()
+	{
+		$menu = array();
+		if (Community\DEBUG)
+		{
+			$menu = array_merge($menu, array(
+				Community\MODULE_NAME . '/person' => array(
+					'title'				 => t('Community Person'),
+					'page callback'		 => 'drupal_get_form',
+					'page arguments'	 => array('\CVWO\Community\person_edit_form'),
+					'type'				 => MENU_NORMAL_ITEM,
+					'access arguments'	 => array(Community\PERMISSION_PERSON_VIEW),
+					'file'				 => 'cvwo_community_person.inc'
+				),
+				Community\MODULE_NAME . '/person/add' => array(
+					'title'				 => t('Add'),
+					'page callback'		 => 'drupal_get_form',
+					'page arguments'	 => array('\CVWO\Community\person_edit_form'),
+					'type'				 => MENU_LOCAL_ACTION,
+					'access arguments'	 => array(Community\PERMISSION_PERSON_ADD),
+					'file'				 => 'cvwo_community_person.inc'
+				),
+				Community\MODULE_NAME . '/person/%/edit' => array(
+					'title'				 => t('Edit'),
+					'page callback'		 => 'drupal_get_form',
+					'page arguments'	 => array('\CVWO\Community\person_edit_form', 2),
+					'type'				 => MENU_LOCAL_TASK,
+					'access arguments'	 => array(Community\PERMISSION_PERSON_EDIT),
+					'file'				 => 'cvwo_community_person.inc'
+				),
+				Community\MODULE_NAME . '/person/%/nok' => array(
+					'title'				 => t('NOK'),
+					'page callback'		 => 'drupal_get_form',
+					'page arguments'	 => array('\CVWO\Community\person_nok_form', 2),
+					'type'				 => MENU_LOCAL_TASK,
+					'access arguments'	 => array(Community\PERMISSION_PERSON_EDIT),
+					'file'				 => 'cvwo_community_person.inc'
+				),
+				Community\MODULE_NAME . '/person/%/nok/%' => array(
+					'title'				 => t('NOK'),
+					'page callback'		 => 'drupal_get_form',
+					'page arguments'	 => array('\CVWO\Community\person_nok_form', 2, 4),
+					'type'				 => MENU_LOCAL_TASK,
+					'access arguments'	 => array(Community\PERMISSION_PERSON_EDIT),
+					'file'				 => 'cvwo_community_person.inc'
+				)
+			));
+		}
+		
+		$menu[Community\MODULE_NAME . '/aas/address_search'] = array(
+			'page callback'				 => 'drupal_get_form',
+			'page arguments'			 => array('\CVWO\Community\aas_address_search_callback'),
+			'type'						 => MENU_CALLBACK,
+			'access arguments'			 => array(\CVWO\Base\VIEW_PERM),
+			'file'						 => 'cvwo_community_aas_address_search.inc'
+		);
+
+		$menu[Community\MODULE_NAME . '/person/search'] = array(
+			'page callback'				 => '\CVWO\Community\person_search_callback',
+			'page arguments'			 => array(3, null),
+			'type'						 => MENU_CALLBACK,
+			'access arguments'			 => array(Community\PERMISSION_PERSON_VIEW),
+			'file'						 => 'cvwo_community_person.inc'
+		);
+
+		$menu[Community\MODULE_NAME . '/worker/search'] = array(
+			'page callback'				 => '\CVWO\Community\worker_search_callback',
+			'page arguments'			 => array(3, null),
+			'type'						 => MENU_CALLBACK,
+			'access arguments'			 => array(Community\PERMISSION_PERSON_VIEW),
+			'file'						 => 'cvwo_community_worker.inc'
+		);
+
+		return $menu;
+	}
+
+	/**
+	 * Implements hook_theme_registry_alter()
+	 *
+	 * This is for us to use a custom template for the Address Search page.
+	 */
+	function cvwo_community_theme_registry_alter(&$theme_registry)
+	{
+		\CVWO\Base\add_path_to_theme_registry($theme_registry,
+			drupal_get_path('module', Community\MODULE_NAME));
+	}
+
+	/**
+	 * Implements hook_form_alter.
+	 */
+	function cvwo_community_form_PersonEditForm_alter(&$form, &$form_state,
+		$form_id, \CVWO\Base\Form $form_object = null)
+	{
+		Community\aas_person_form_hook($form, $form_state, $form_id, $form_object);
+	}
+}

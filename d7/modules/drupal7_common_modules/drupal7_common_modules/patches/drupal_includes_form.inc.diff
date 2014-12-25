@@ -1,0 +1,106 @@
+--- a/includes/form.inc	2013-05-16 16:16:37.144015471 +0800
++++ b/includes/form.inc	2013-07-23 17:54:04.909260838 +0800
+@@ -838,7 +838,11 @@
+   // functions and mapping user input, if any, to #value properties, and also
+   // storing the values in $form_state['values']. We need to retain the
+   // unprocessed $form in case it needs to be cached.
+-  $unprocessed_form = $form;
++  //
++  // We use serialize here to force a deep copy.
++  $unprocessed_form =
++    !$form_state['rebuild'] && empty($form_state['no_cache']) ?
++    unserialize(serialize($form)) : null;
+   $form = form_builder($form_id, $form, $form_state);
+ 
+   // Only process the input if we have a correct form submission.
+@@ -1302,8 +1306,26 @@
+     // The following errors are always shown.
+     if (isset($elements['#needs_validation'])) {
+       // Verify that the value is not longer than #maxlength.
+-      if (isset($elements['#maxlength']) && drupal_strlen($elements['#value']) > $elements['#maxlength']) {
+-        form_error($elements, $t('!name cannot be longer than %max characters but is currently %length characters long.', array('!name' => empty($elements['#title']) ? $elements['#parents'][0] : $elements['#title'], '%max' => $elements['#maxlength'], '%length' => drupal_strlen($elements['#value']))));
++      if (isset($elements['#maxlength'])) {
++        $error = false;
++        $length = 0;
++        if (is_array($elements['#value'])) {
++          foreach($elements['#value'] as $value) {
++            $length = drupal_strlen($value);
++            if ($length > $elements['#maxlength']) {
++              $error = true;
++              break;
++            }
++          }
++        } else {
++          $length = drupal_strlen($elements['#value']);
++          if ($length > $elements['#maxlength']) {
++            $error = true;
++          }
++        }
++        if ($error) {
++          form_error($elements, $t('!name cannot be longer than %max characters but is currently %length characters long.', array('!name' => empty($elements['#title']) ? $elements['#parents'][0] : $elements['#title'], '%max' => $elements['#maxlength'], '%length' => $length)));
++        }
+       }
+ 
+       if (isset($elements['#options']) && isset($elements['#value'])) {
+@@ -2797,7 +2819,7 @@
+   $element['#attributes']['type'] = 'radio';
+   element_set_attributes($element, array('id', 'name', '#return_value' => 'value'));
+ 
+-  if (isset($element['#return_value']) && $element['#value'] !== FALSE && $element['#value'] == $element['#return_value']) {
++  if (isset($element['#return_value']) && (empty($element['#value']) || $element['#value'] !== FALSE) && !empty($element['#value']) && $element['#value'] == $element['#return_value']) {
+     $element['#attributes']['checked'] = 'checked';
+   }
+   _form_set_class($element, array('form-radio'));
+@@ -4176,8 +4198,15 @@
+  * Form element validation handler for integer elements.
+  */
+ function element_validate_integer($element, &$form_state) {
+-  $value = $element['#value'];
+-  if ($value !== '' && (!is_numeric($value) || intval($value) != $value)) {
++  $values = $element['#value'];
++  if (is_array($values)) {
++    foreach ($values as $value) {
++      if ($value !== '' && (!is_numeric($value) || intval($value) != $value)) {
++        form_error($element, t('%name must be an integer.', array('%name' => $element['#title'])));
++        break;
++      }
++    }
++  } else if ($values !== '' && (!is_numeric($values) || intval($values) != $values)) {
+     form_error($element, t('%name must be an integer.', array('%name' => $element['#title'])));
+   }
+ }
+@@ -4186,8 +4215,15 @@
+  * Form element validation handler for integer elements that must be positive.
+  */
+ function element_validate_integer_positive($element, &$form_state) {
+-  $value = $element['#value'];
+-  if ($value !== '' && (!is_numeric($value) || intval($value) != $value || $value <= 0)) {
++  $values = $element['#value'];
++  if (is_array($values)) {
++    foreach ($values as $value) {
++      if ($value !== '' && (!is_numeric($value) || intval($value) != $value || $value <= 0)) {
++        form_error($element, t('%name must be a positive integer.', array('%name' => $element['#title'])));
++        break;
++      }
++    }
++  } else if ($values !== '' && (!is_numeric($values) || intval($values) != $values || $values <= 0)) {
+     form_error($element, t('%name must be a positive integer.', array('%name' => $element['#title'])));
+   }
+ }
+@@ -4196,8 +4232,14 @@
+  * Form element validation handler for number elements.
+  */
+ function element_validate_number($element, &$form_state) {
+-  $value = $element['#value'];
+-  if ($value != '' && !is_numeric($value)) {
++  $values = $element['#value'];
++  if (is_array($values)) {
++    foreach ($values as $value) {
++      if ($value != '' && !is_numeric($value)) {
++        form_error($element, t('%name must be a number.', array('%name' => $element['#title'])));
++      }
++    }
++  } else if ($values != '' && !is_numeric($values)) {
+     form_error($element, t('%name must be a number.', array('%name' => $element['#title'])));
+   }
+ }
