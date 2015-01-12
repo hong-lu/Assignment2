@@ -1,5 +1,5 @@
-CHANGES:
-ENTRY BY/ON: Name/Date
+CHANGES: Added "Mass Import Users" tab
+ENTRY BY/ON: Hong Lu/ Jan 6th
 
 CHANGES:
 ENTRY BY/ON: Name/Date
